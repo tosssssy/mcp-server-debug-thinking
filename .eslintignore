@@ -1,0 +1,27 @@
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Debug data
+.debug-iteration-mcp/
+
+# Config files
+*.config.js
+!.eslintrc.js
+
+# Test files
+tests/
+*.test.ts

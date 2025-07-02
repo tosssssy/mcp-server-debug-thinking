@@ -1,0 +1,55 @@
+# Source files
+*.ts
+!dist/**/*.d.ts
+
+# Configuration files
+tsconfig.json
+.eslintrc.js
+.prettierrc
+jest.config.js
+.editorconfig
+
+# Development files
+src/
+tests/
+examples/
+
+# GitHub files
+.github/
+.gitignore
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+SECURITY.md
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and debug data
+*.log
+npm-debug.log*
+.debug-iteration-mcp/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Test config
+jest.config.js
+*.test.ts
+
+# Dependencies
+node_modules/
+
+# Build cache
+*.tsbuildinfo
+.cache/
+
+# Environment files
+.env
+.env.*

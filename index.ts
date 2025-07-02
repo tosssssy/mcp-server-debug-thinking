@@ -10,11 +10,7 @@ import {
 import chalk from "chalk";
 import fs from "fs/promises";
 import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import os from "os";
 
 interface CodeChange {
   file: string;
@@ -53,9 +49,9 @@ interface Result {
 interface CodeThinkingStep {
   id: string;
   timestamp: Date;
-  problem: Problem;
-  hypothesis: Hypothesis;
-  experiment: Experiment;
+  problem?: Problem;
+  hypothesis?: Hypothesis;
+  experiment?: Experiment;
   result?: Result;
   nextAction?: "fixed" | "iterate" | "pivot" | "research";
 }
@@ -74,8 +70,15 @@ interface Fix {
   verified: boolean;
 }
 
+interface DebugSession {
+  id: string;
+  startTime: Date;
+  problem?: Problem;  // Overall problem for the session
+  steps: CodeThinkingStep[];
+}
+
 class CodeDebugServer {
-  private debugSessions: Map<string, CodeThinkingStep[]> = new Map();
+  private debugSessions: Map<string, DebugSession> = new Map();
   private errorPatterns: ErrorPattern[] = [];
   private successfulFixes: Fix[] = [];
   private currentSessionId: string | null = null;
@@ -85,7 +88,9 @@ class CodeDebugServer {
   constructor() {
     this.disableLogging =
       (process.env.DISABLE_DEBUG_LOGGING || "").toLowerCase() === "true";
-    this.dataDir = path.join(process.cwd(), ".debug-iteration-mcp");
+    // Use home directory or environment variable for data storage
+    const baseDir = process.env.DEBUG_DATA_DIR || os.homedir();
+    this.dataDir = path.join(baseDir, ".debug-iteration-mcp");
     this.initializeStorage();
   }
 
@@ -201,14 +206,15 @@ class CodeDebugServer {
         JSON.stringify(
           {
             id: sessionId,
-            startTime: session[0]?.timestamp || new Date(),
+            startTime: session.startTime,
             endTime: new Date(),
-            steps: session,
+            problem: session.problem,
+            steps: session.steps,
             summary: {
-              totalSteps: session.length,
-              successfulFixes: session.filter((s) => s.result?.success).length,
+              totalSteps: session.steps.length,
+              successfulFixes: session.steps.filter((s) => s.result?.success).length,
               finalStatus:
-                session[session.length - 1]?.nextAction || "incomplete",
+                session.steps[session.steps.length - 1]?.nextAction || "incomplete",
             },
           },
           null,
@@ -221,11 +227,12 @@ class CodeDebugServer {
   }
 
   private generateId(): string {
-    return `debug-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `debug-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   }
 
-  private formatDebugStep(step: CodeThinkingStep): string {
-    const { problem, hypothesis, experiment, result } = step;
+  private formatDebugStep(step: CodeThinkingStep, sessionProblem?: Problem): string {
+    const { hypothesis, experiment, result } = step;
+    const problem = step.problem || sessionProblem;
 
     let status = "🔍 Investigating";
     let statusColor = chalk.yellow;
@@ -243,45 +250,40 @@ class CodeDebugServer {
       }
     }
 
-    const header = statusColor(
-      `${status} | Confidence: ${hypothesis.confidence}%`,
-    );
+    const confidence = hypothesis?.confidence ?? 0;
+    const header = statusColor(`${status} | Confidence: ${confidence}%`);
     const border = "═".repeat(60);
 
     let output = `
 ╔${border}╗
 ║ ${header.padEnd(58)} ║
-╟${border}╢
-║ ${chalk.bold("Problem:")} ${problem.description.padEnd(49)} ║`;
-
-    if (problem.errorMessage) {
-      output += `\n║ ${chalk.red("Error:")} ${problem.errorMessage
-        .substring(0, 51)
-        .padEnd(51)} ║`;
-    }
-
-    output += `
-║ ${chalk.bold("Hypothesis:")} ${hypothesis.cause.substring(0, 45).padEnd(45)} ║
-║ ${chalk.bold("Affected:")} ${hypothesis.affectedCode
-      .join(", ")
-      .substring(0, 47)
-      .padEnd(47)} ║
 ╟${border}╢`;
 
-    experiment.changes.forEach((change, idx) => {
-      output += `
-║ ${chalk.cyan(`Change ${idx + 1}:`)} ${change.file} (lines ${
-        change.lineRange[0]
-      }-${change.lineRange[1]}) ║
+    if (problem) {
+      output += `\n║ ${chalk.bold("Problem:")} ${problem.description.substring(0, 49).padEnd(49)} ║`;
+      if (problem.errorMessage) {
+        output += `\n║ ${chalk.red("Error:")} ${problem.errorMessage.substring(0, 51).padEnd(51)} ║`;
+      }
+    }
+
+    if (hypothesis) {
+      output += `\n║ ${chalk.bold("Hypothesis:")} ${hypothesis.cause.substring(0, 45).padEnd(45)} ║`;
+      output += `\n║ ${chalk.bold("Affected:")} ${hypothesis.affectedCode.join(", ").substring(0, 47).padEnd(47)} ║`;
+    }
+
+    if (experiment && experiment.changes.length > 0) {
+      output += `\n╟${border}╢`;
+      experiment.changes.forEach((change, idx) => {
+        output += `
+║ ${chalk.cyan(`Change ${idx + 1}:`)} ${change.file} (lines ${change.lineRange[0]}-${change.lineRange[1]}) ║
 ║ ${chalk.dim("Reason:")} ${change.reasoning.substring(0, 49).padEnd(49)} ║`;
-    });
+      });
+    }
 
     if (result) {
       output += `
 ╟${border}╢
-║ ${chalk.bold("Result:")} ${
-        result.success ? chalk.green("Success") : chalk.red("Failed")
-      } ║
+║ ${chalk.bold("Result:")} ${result.success ? chalk.green("Success") : chalk.red("Failed")} ║
 ║ ${chalk.bold("Learning:")} ${result.learning.substring(0, 47).padEnd(47)} ║`;
     }
 
@@ -291,29 +293,31 @@ class CodeDebugServer {
     return output;
   }
 
-  private learnFromResult(step: CodeThinkingStep): void {
+  private learnFromResult(step: CodeThinkingStep, sessionProblem?: Problem): void {
     if (!step.result) return;
 
+    const problem = step.problem || sessionProblem;
+    
     // Learn from errors
-    if (step.problem.errorMessage && !step.result.success) {
+    if (problem?.errorMessage && !step.result.success && step.hypothesis && step.experiment) {
       const existingPattern = this.errorPatterns.find(
-        (p) => p.pattern === step.problem.errorMessage,
+        (p) => p.pattern === problem.errorMessage,
       );
 
       if (existingPattern) {
         existingPattern.occurrences++;
       } else {
         this.errorPatterns.push({
-          pattern: step.problem.errorMessage,
+          pattern: problem.errorMessage,
           commonCause: step.hypothesis.cause,
-          suggestedFix: step.experiment.changes[0]?.reasoning || "",
+          suggestedFix: step.experiment?.changes[0]?.reasoning || "",
           occurrences: 1,
         });
       }
     }
 
     // Record successful fixes
-    if (step.result.success) {
+    if (step.result.success && step.experiment) {
       this.successfulFixes.push({
         problemId: step.id,
         solution: step.result.learning,
@@ -326,13 +330,22 @@ class CodeDebugServer {
     this.saveKnowledge().catch(console.error);
   }
 
-  public startSession(sessionId?: string): string {
+  public startSession(sessionId?: string, problem?: Problem): string {
     const id = sessionId || this.generateId();
-    this.debugSessions.set(id, []);
+    const session: DebugSession = {
+      id,
+      startTime: new Date(),
+      problem,
+      steps: []
+    };
+    this.debugSessions.set(id, session);
     this.currentSessionId = id;
 
     if (!this.disableLogging) {
       console.error(chalk.bold.blue(`\n🚀 Started debug session: ${id}\n`));
+      if (problem) {
+        console.error(chalk.yellow(`📋 Problem: ${problem.description}`));
+      }
     }
 
     return id;
@@ -345,41 +358,62 @@ class CodeDebugServer {
     try {
       const data = input as Record<string, unknown>;
 
+      // Ensure session exists
       if (!this.currentSessionId) {
-        this.startSession();
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              error: "No active session",
+              solution: "Please start a session first with action: 'start_session'",
+            }, null, 2),
+          }],
+          isError: true,
+        };
       }
 
-      const step: CodeThinkingStep = {
+      // Create step with provided data - all fields are optional for flexibility
+      const step: Partial<CodeThinkingStep> = {
         id: this.generateId(),
         timestamp: new Date(),
-        problem: data.problem as Problem,
-        hypothesis: data.hypothesis as Hypothesis,
-        experiment: data.experiment as Experiment,
-        result: data.result as Result | undefined,
-        nextAction: data.nextAction as
-          | "fixed"
-          | "iterate"
-          | "pivot"
-          | "research"
-          | undefined,
       };
 
+      // Add provided fields
+      if (data.problem) step.problem = data.problem as Problem;
+      if (data.hypothesis) step.hypothesis = data.hypothesis as Hypothesis;
+      if (data.experiment) step.experiment = data.experiment as Experiment;
+      if (data.result) step.result = data.result as Result;
+      if (data.nextAction) step.nextAction = data.nextAction as "fixed" | "iterate" | "pivot" | "research";
+
+      // At least one field should be provided
+      if (!step.problem && !step.hypothesis && !step.experiment && !step.result) {
+        throw new Error("At least one of: problem, hypothesis, experiment, or result must be provided");
+      }
+
+      // Type assertion after validation
+      const validStep = step as CodeThinkingStep;
+
       const session = this.debugSessions.get(this.currentSessionId!);
-      session?.push(step);
+      if (!session) {
+        throw new Error("Session not found");
+      }
+      
+      session.steps.push(validStep);
 
-      if (step.result) {
-        this.learnFromResult(step);
+      if (validStep.result) {
+        this.learnFromResult(validStep, session.problem);
       }
 
-      if (!this.disableLogging) {
-        console.error(this.formatDebugStep(step));
+      if (!this.disableLogging && (validStep.hypothesis || validStep.experiment)) {
+        console.error(this.formatDebugStep(validStep, session.problem));
       }
 
-      // Check for known patterns
+      // Check for known patterns using session problem or step problem
       let patternMatch = null;
-      if (step.problem.errorMessage) {
+      const problemToCheck = validStep.problem || session.problem;
+      if (problemToCheck?.errorMessage) {
         patternMatch = this.errorPatterns.find((p) =>
-          step.problem.errorMessage?.includes(p.pattern),
+          problemToCheck.errorMessage?.includes(p.pattern),
         );
       }
 
@@ -400,7 +434,7 @@ class CodeDebugServer {
                       previousOccurrences: patternMatch.occurrences,
                     }
                   : null,
-                sessionSteps: session?.length || 0,
+                sessionSteps: session?.steps.length || 0,
                 knownPatterns: this.errorPatterns.length,
                 successfulFixes: this.successfulFixes.length,
               },
@@ -411,14 +445,18 @@ class CodeDebugServer {
         ],
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(chalk.red("Error in recordStep:"), errorMessage);
+      
       return {
         content: [
           {
             type: "text",
             text: JSON.stringify(
               {
-                error: error instanceof Error ? error.message : String(error),
+                error: errorMessage,
                 status: "failed",
+                details: "Please ensure all required fields (problem, hypothesis, experiment) are provided",
               },
               null,
               2,
@@ -456,7 +494,7 @@ class CodeDebugServer {
       const summary = {
         sessionId: id,
         ended: new Date().toISOString(),
-        totalSteps: session?.length || 0,
+        totalSteps: session?.steps.length || 0,
         saved: true,
         dataLocation: this.dataDir,
       };
@@ -591,17 +629,20 @@ class CodeDebugServer {
 
     const summary = {
       sessionId: id,
-      totalSteps: session.length,
-      successfulFixes: session.filter((s) => s.result?.success).length,
-      iterations: session.filter((s) => s.nextAction === "iterate").length,
-      pivots: session.filter((s) => s.nextAction === "pivot").length,
+      sessionProblem: session.problem,
+      totalSteps: session.steps.length,
+      successfulFixes: session.steps.filter((s) => s.result?.success).length,
+      iterations: session.steps.filter((s) => s.nextAction === "iterate").length,
+      pivots: session.steps.filter((s) => s.nextAction === "pivot").length,
       averageConfidence:
-        session.reduce((acc, s) => acc + s.hypothesis.confidence, 0) /
-        session.length,
-      problemsSolved: session
+        session.steps.length > 0
+          ? session.steps.reduce((acc, s) => acc + (s.hypothesis?.confidence || 0), 0) /
+            session.steps.length
+          : 0,
+      problemsSolved: session.steps
         .filter((s) => s.nextAction === "fixed")
         .map((s) => ({
-          problem: s.problem.description,
+          hypothesis: s.hypothesis?.cause,
           solution: s.result?.learning,
         })),
     };
@@ -636,7 +677,7 @@ Key features:
 - Pattern recognition from previous errors
 - Learning accumulation across sessions
 - Confidence scoring for hypotheses
-- Persistent storage in .debug-iteration-mcp directory
+- Persistent storage in ~/.debug-iteration-mcp directory
 
 Use this tool when:
 - Debugging errors in code
@@ -644,9 +685,14 @@ Use this tool when:
 - Tracking complex problem-solving processes
 - Building a knowledge base of fixes
 
-The tool maintains a session-based approach where each debugging attempt is tracked
-and patterns are learned for future reference. All data is persisted in the .debug-iteration-mcp
-directory for long-term learning.`,
+Actions:
+1. start_session - Start a new debugging session (optionally with a problem)
+2. record_step - Record a debugging step (requires hypothesis and experiment)
+3. get_summary - Get summary of current or specific session
+4. end_session - End and save a session
+5. list_sessions - List all sessions
+
+Data is stored in ~/.debug-iteration-mcp/ (or custom location via DEBUG_DATA_DIR env var).`,
   inputSchema: {
     type: "object",
     properties: {
@@ -663,10 +709,11 @@ directory for long-term learning.`,
       },
       sessionId: {
         type: "string",
-        description: "Optional session ID",
+        description: "Session ID (optional for start_session and get_summary)",
       },
       problem: {
         type: "object",
+        description: "Problem definition (optional for start_session only)",
         properties: {
           description: { type: "string" },
           errorMessage: { type: "string" },
@@ -677,6 +724,7 @@ directory for long-term learning.`,
       },
       hypothesis: {
         type: "object",
+        description: "Hypothesis about the cause (required for record_step)",
         properties: {
           cause: { type: "string" },
           affectedCode: {
@@ -693,6 +741,7 @@ directory for long-term learning.`,
       },
       experiment: {
         type: "object",
+        description: "Experiment to test the hypothesis (required for record_step)",
         properties: {
           changes: {
             type: "array",
@@ -726,6 +775,7 @@ directory for long-term learning.`,
       },
       result: {
         type: "object",
+        description: "Result of the experiment (optional for record_step)",
         properties: {
           success: { type: "boolean" },
           output: { type: "string" },
@@ -739,6 +789,7 @@ directory for long-term learning.`,
       },
       nextAction: {
         type: "string",
+        description: "Next action to take (optional for record_step)",
         enum: ["fixed", "iterate", "pivot", "research"],
       },
     },
@@ -773,12 +824,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "start_session":
         const sessionId = debugServer.startSession(
           args.sessionId as string | undefined,
+          args.problem as Problem | undefined,
         );
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify({ sessionId, status: "started" }, null, 2),
+              text: JSON.stringify({ 
+                sessionId, 
+                status: "started",
+                problemSet: args.problem ? true : false
+              }, null, 2),
             },
           ],
         };
@@ -804,7 +860,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: `Unknown action: ${action}`,
+              text: JSON.stringify({
+                error: `Unknown action: ${action}`,
+                validActions: ["start_session", "record_step", "get_summary", "end_session", "list_sessions"],
+              }, null, 2),
             },
           ],
           isError: true,
