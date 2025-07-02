@@ -82,6 +82,22 @@ The server provides a tool called `code_debug_think` for systematic debugging wo
 // Start a new session
 await use_tool("code_debug_think", { action: "start_session" });
 
+// Start with a problem definition
+await use_tool("code_debug_think", { 
+  action: "start_session",
+  problem: {
+    description: "API endpoint fails intermittently",
+    errorMessage: "ECONNREFUSED",
+    expectedBehavior: "Should connect to database",
+    actualBehavior: "Connection refused errors"
+  },
+  metadata: {
+    language: "typescript",
+    framework: "express",
+    tags: ["api", "database", "connection"]
+  }
+});
+
 // Or resume a specific session
 await use_tool("code_debug_think", { 
   action: "start_session", 
@@ -146,6 +162,61 @@ await use_tool("code_debug_think", { action: "list_sessions" });
 // Returns: list of all debugging sessions with metadata
 ```
 
+#### 6. Search for Similar Patterns
+
+```typescript
+// Basic search with error type
+await use_tool("code_debug_think", {
+  action: "search_patterns",
+  searchQuery: {
+    errorType: "TypeError",
+    keywords: ["undefined", "property"],
+    searchMode: "fuzzy",        // "exact" or "fuzzy" (default)
+    keywordLogic: "OR",         // "AND" or "OR" (default)
+    includeDebugInfo: true      // Get debug statistics
+  }
+});
+
+// Advanced search with filters
+await use_tool("code_debug_think", {
+  action: "search_patterns",
+  searchQuery: {
+    errorType: "ECONNREFUSED",
+    keywords: ["database", "connection"],
+    language: "javascript",
+    framework: "express",
+    confidence_threshold: 70,
+    searchMode: "exact",
+    keywordLogic: "AND",
+    limit: 5
+  }
+});
+
+// Metadata-only search (find all React debugging sessions)
+await use_tool("code_debug_think", {
+  action: "search_patterns",
+  searchQuery: {
+    framework: "react",
+    includeDebugInfo: true
+  }
+});
+
+// Language-specific search with confidence filter
+await use_tool("code_debug_think", {
+  action: "search_patterns",
+  searchQuery: {
+    language: "typescript",
+    confidence_threshold: 80,
+    limit: 10
+  }
+});
+
+// Returns: 
+// - Similar problems with their solutions
+// - Suggested approaches for high-similarity matches
+// - Debug info showing search statistics (if requested)
+```
+
 ### Next Actions Explained
 
 - **`fixed`** - Problem is completely resolved
@@ -199,7 +270,47 @@ await use_tool("code_debug_think", {
 });
 ```
 
-### Example 2: Learning from Patterns
+### Example 2: Searching Similar Problems
+
+Find solutions from past debugging sessions:
+
+```typescript
+const results = await use_tool("code_debug_think", {
+  action: "search_patterns",
+  searchQuery: {
+    errorType: "TypeError",
+    keywords: ["cannot read", "undefined"],
+    confidence_threshold: 60
+  }
+});
+
+// Returns similar problems with their solutions:
+{
+  "matches": [{
+    "sessionId": "debug-167890",
+    "similarity": 0.85,
+    "problem": {
+      "description": "User profile page crashes",
+      "errorMessage": "TypeError: Cannot read property 'name' of undefined"
+    },
+    "solution": {
+      "hypothesis": "User data not loaded before render",
+      "changes": [{
+        "file": "UserProfile.js",
+        "reasoning": "Add loading state and null checks"
+      }],
+      "learning": "Always validate API responses before accessing nested properties"
+    },
+    "metadata": {
+      "confidence": 85,
+      "language": "javascript",
+      "framework": "react"
+    }
+  }]
+}
+```
+
+### Example 3: Learning from Patterns
 
 After multiple debugging sessions, the server learns patterns:
 

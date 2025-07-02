@@ -16,13 +16,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for iterative debugging workflows
 - Session summary and statistics generation
 - Integration with Claude Desktop and VS Code
+- Advanced search functionality to find similar debugging patterns
+- Session metadata support (language, framework, tags)
+- Automatic indexing of debugging sessions for fast search
+- Similarity scoring algorithm for pattern matching
+
+### Enhanced
+- Improved error type extraction with support for more formats
+- Fuzzy and exact search modes for flexible pattern matching
+- AND/OR logic for combining multiple search keywords
+- Debug information in search results for transparency
+- Auto-generated suggested approaches for high-similarity matches
+- Better error handling with clear, actionable error messages
+- Metadata filtering that gracefully handles missing data
+- String similarity calculation using Levenshtein distance
+- Recency and success rate boosting in search results
 
 ### Features
-- `start_session` - Initialize new debugging sessions
+- `start_session` - Initialize new debugging sessions with optional problem definition and metadata
 - `record_step` - Track debugging steps with hypothesis testing
 - `get_summary` - Retrieve session statistics and insights
 - `end_session` - Save and close debugging sessions
 - `list_sessions` - View all debugging sessions
+- `search_patterns` - Search for similar problems and solutions across all sessions
 
 ### Technical
 - TypeScript implementation with ES modules

@@ -15,10 +15,12 @@
   ],
   "scripts": {
     "build": "tsc && chmod +x dist/index.js",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
     "dev": "tsc --watch",
     "prepare": "npm run build",
-    "lint": "eslint . --ext .ts",
-    "format": "prettier --write \"**/*.{ts,json,md}\""
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.{ts,json}\" \"*.{json,md}\""
   },
   "keywords": [
     "mcp",
