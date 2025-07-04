@@ -8,8 +8,14 @@ import {
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { DebugServer } from './services/DebugServer.js';
-import { SearchQuery } from './types/search.js';
-import { Problem } from './types/debug.js';
+import { 
+  StartParams, 
+  ThinkParams, 
+  ExperimentParams, 
+  ObserveParams, 
+  SearchParams, 
+  EndParams 
+} from './types/actions.js';
 import { createJsonResponse } from './utils/format.js';
 import { logger } from './utils/logger.js';
 import {
@@ -20,34 +26,25 @@ import {
   ERROR_MESSAGES
 } from './constants.js';
 
-const CODE_DEBUG_TOOL: Tool = {
+const DEBUG_ITERATION_TOOL: Tool = {
   name: TOOL_NAME,
-  description: `A systematic debugging and code iteration framework for Claude Code.
-This tool helps track and learn from debugging sessions, building knowledge over time.
+  description: `Systematic debugging and iteration tracker with pattern learning.
 
-Key features:
-- Structured problem analysis with hypothesis testing
-- Code change tracking with reasoning
-- Pattern recognition from previous errors
-- Learning accumulation across sessions
-- Confidence scoring for hypotheses
-- Persistent storage in ~/.debug-iteration-mcp directory
+This tool provides a streamlined workflow for debugging:
+1. start - Begin a debugging session
+2. think - Record thoughts and automatically generate hypothesis
+3. experiment - Define what changes to test
+4. observe - Record results and learnings
+5. search - Find similar past issues and solutions
+6. end - Complete the session
 
-Use this tool when:
-- Debugging errors in code
-- Iterating on implementations
-- Tracking complex problem-solving processes
-- Building a knowledge base of fixes
+Features:
+- Integrates with sequential-thinking MCP
+- Learns from past debugging sessions
+- Simple, intuitive action flow
+- Pattern recognition and search
 
-Actions:
-1. start_session - Start a new debugging session (optionally with a problem)
-2. record_step - Record a debugging step (requires hypothesis and experiment)
-3. get_summary - Get summary of current or specific session
-4. end_session - End and save a session
-5. list_sessions - List all sessions
-6. search_patterns - Search for similar debugging patterns across all sessions
-
-Data is stored in ~/.debug-iteration-mcp/ (or custom location via DEBUG_DATA_DIR env var).`,
+Data persists in ~/.debug-iteration-mcp/`,
   inputSchema: {
     type: "object",
     properties: {
@@ -56,162 +53,100 @@ Data is stored in ~/.debug-iteration-mcp/ (or custom location via DEBUG_DATA_DIR
         enum: Object.values(ACTIONS),
         description: "Action to perform",
       },
-      sessionId: {
-        type: "string",
-        description: "Session ID (optional for start_session and get_summary)",
-      },
+      // Start action
       problem: {
-        type: "object",
-        description: "Problem definition (optional for start_session only)",
-        properties: {
-          description: { type: "string" },
-          errorMessage: { type: "string" },
-          expectedBehavior: { type: "string" },
-          actualBehavior: { type: "string" },
-        },
-        required: ["description", "expectedBehavior", "actualBehavior"],
-      },
-      hypothesis: {
-        type: "object",
-        description: "Hypothesis about the cause (required for record_step)",
-        properties: {
-          cause: { type: "string" },
-          affectedCode: {
-            type: "array",
-            items: { type: "string" },
-          },
-          confidence: {
-            type: "integer",
-            minimum: 0,
-            maximum: 100,
-          },
-        },
-        required: ["cause", "affectedCode", "confidence"],
-      },
-      experiment: {
-        type: "object",
-        description: "Experiment to test the hypothesis (required for record_step)",
-        properties: {
-          changes: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                file: { type: "string" },
-                lineRange: {
-                  type: "array",
-                  items: { type: "integer" },
-                  minItems: 2,
-                  maxItems: 2,
-                },
-                oldCode: { type: "string" },
-                newCode: { type: "string" },
-                reasoning: { type: "string" },
-              },
-              required: [
-                "file",
-                "lineRange",
-                "oldCode",
-                "newCode",
-                "reasoning",
-              ],
-            },
-          },
-          testCommand: { type: "string" },
-          expectedOutcome: { type: "string" },
-        },
-        required: ["changes", "expectedOutcome"],
-      },
-      result: {
-        type: "object",
-        description: "Result of the experiment (optional for record_step)",
-        properties: {
-          success: { type: "boolean" },
-          output: { type: "string" },
-          newErrors: {
-            type: "array",
-            items: { type: "string" },
-          },
-          learning: { type: "string" },
-        },
-        required: ["success", "learning"],
-      },
-      nextAction: {
         type: "string",
-        description: "Next action to take (optional for record_step)",
-        enum: ["fixed", "iterate", "pivot", "research"],
+        description: "Problem description (for start action)",
       },
-      metadata: {
+      context: {
         type: "object",
-        description: "Metadata for the session (optional for start_session)",
+        description: "Additional context (for start action)",
         properties: {
+          error: { type: "string" },
           language: { type: "string" },
           framework: { type: "string" },
-          tags: {
-            type: "array",
-            items: { type: "string" },
-          },
+          tags: { type: "array", items: { type: "string" } },
         },
       },
-      searchQuery: {
-        type: "object",
-        description: "Search query parameters (required for search_patterns)",
-        properties: {
-          errorType: { 
-            type: "string",
-            description: "Error type to search for (e.g. 'TypeError', 'ECONNREFUSED')"
+      // Think action
+      thought: {
+        oneOf: [
+          { type: "string" },
+          { type: "array", items: { type: "string" } }
+        ],
+        description: "Thought(s) to record (for think action)",
+      },
+      confidence: {
+        type: "integer",
+        minimum: 0,
+        maximum: 100,
+        description: "Confidence level (for think action)",
+      },
+      // Experiment action
+      description: {
+        type: "string",
+        description: "Experiment description (for experiment action)",
+      },
+      changes: {
+        type: "array",
+        description: "Code changes to test (for experiment action)",
+        items: {
+          type: "object",
+          properties: {
+            file: { type: "string" },
+            change: { type: "string" },
+            reason: { type: "string" },
           },
-          keywords: {
-            type: "array",
-            items: { type: "string" },
-            description: "Keywords to search in problem descriptions and solutions"
-          },
-          language: { 
-            type: "string",
-            description: "Filter by programming language (e.g. 'javascript', 'typescript')"
-          },
-          framework: { 
-            type: "string",
-            description: "Filter by framework (e.g. 'react', 'express')"
-          },
-          tags: {
-            type: "array",
-            items: { type: "string" },
-            description: "Filter by tags (matches sessions with any of these tags)"
-          },
-          confidence_threshold: {
-            type: "number",
-            minimum: 0,
-            maximum: 100,
-            description: "Minimum average confidence score to include in results"
-          },
-          searchMode: {
-            type: "string",
-            enum: ["exact", "fuzzy"],
-            description: "Search mode - exact matches only or fuzzy matching (default: fuzzy)"
-          },
-          keywordLogic: {
-            type: "string",
-            enum: ["AND", "OR"],
-            description: "How to combine multiple keywords (default: OR)"
-          },
-          includeDebugInfo: {
-            type: "boolean",
-            description: "Include debug information in results"
-          },
-          limit: {
-            type: "integer",
-            minimum: 1,
-            maximum: 50,
-            default: 10,
-            description: "Maximum number of results to return"
-          },
+          required: ["file", "change", "reason"],
         },
+      },
+      expected: {
+        type: "string",
+        description: "Expected outcome (for experiment action)",
+      },
+      // Observe action
+      success: {
+        type: "boolean",
+        description: "Whether the experiment succeeded (for observe action)",
+      },
+      output: {
+        type: "string",
+        description: "Output from the experiment (for observe action)",
+      },
+      learning: {
+        type: "string",
+        description: "What was learned (for observe action)",
+      },
+      next: {
+        type: "string",
+        enum: ["fixed", "iterate", "pivot"],
+        description: "Next action to take (for observe action)",
+      },
+      // Search action
+      query: {
+        type: "string",
+        description: "Search query (for search action)",
+      },
+      filters: {
+        type: "object",
+        description: "Search filters (for search action)",
+        properties: {
+          type: { type: "string", enum: ["error", "solution", "pattern"] },
+          confidence: { type: "integer", minimum: 0, maximum: 100 },
+          language: { type: "string" },
+          limit: { type: "integer", minimum: 1, maximum: 50 },
+        },
+      },
+      // End action
+      summary: {
+        type: "boolean",
+        description: "Whether to return a summary (for end action)",
       },
     },
     required: ["action"],
   },
 };
+
 
 const server = new Server(
   {
@@ -228,7 +163,7 @@ const server = new Server(
 const debugServer = new DebugServer();
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [CODE_DEBUG_TOOL],
+  tools: [DEBUG_ITERATION_TOOL],
 }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -237,43 +172,41 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const action = args.action as string;
 
     switch (action) {
-      case ACTIONS.START_SESSION:
-        const sessionId = debugServer.startSession(
-          args.sessionId as string | undefined,
-          args.problem as Problem | undefined,
-          args.metadata as { language?: string; framework?: string; tags?: string[] } | undefined,
-        );
-        return createJsonResponse({ 
-          sessionId, 
-          status: "started",
-          problemSet: args.problem ? true : false,
-          metadata: args.metadata || null
+      case ACTIONS.START:
+        return debugServer.start({
+          problem: args.problem as string,
+          context: args.context as any
         });
 
-      case ACTIONS.RECORD_STEP:
-        return debugServer.recordStep(args);
+      case ACTIONS.THINK:
+        return debugServer.think({
+          thought: args.thought as string | string[],
+          confidence: args.confidence as number
+        });
 
-      case ACTIONS.GET_SUMMARY:
-        return await debugServer.getSessionSummary(
-          args.sessionId as string | undefined,
-        );
+      case ACTIONS.EXPERIMENT:
+        return debugServer.experiment({
+          description: args.description as string,
+          changes: args.changes as any[],
+          expected: args.expected as string
+        });
 
-      case ACTIONS.END_SESSION:
-        return await debugServer.endSession(
-          args.sessionId as string | undefined,
-        );
+      case ACTIONS.OBSERVE:
+        return await debugServer.observe({
+          success: args.success as boolean,
+          output: args.output as string,
+          learning: args.learning as string,
+          next: args.next as any
+        });
 
-      case ACTIONS.LIST_SESSIONS:
-        return await debugServer.listSessions();
-        
-      case ACTIONS.SEARCH_PATTERNS:
-        if (!args.searchQuery) {
-          return createJsonResponse({
-            error: ERROR_MESSAGES.SEARCH_QUERY_REQUIRED,
-            status: "failed",
-          }, true);
-        }
-        return debugServer.searchPatterns(args.searchQuery as SearchQuery);
+      case ACTIONS.SEARCH:
+        return debugServer.search({
+          query: args.query as string,
+          filters: args.filters as any
+        });
+
+      case ACTIONS.END:
+        return await debugServer.end(args.summary as boolean);
 
       default:
         return createJsonResponse({

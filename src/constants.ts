@@ -1,9 +1,11 @@
 // File paths
 export const DATA_DIR_NAME = '.debug-iteration-mcp';
-export const SESSIONS_DIR = 'sessions';
-export const ERROR_PATTERNS_FILE = 'error-patterns.json';
-export const SUCCESSFUL_FIXES_FILE = 'successful-fixes.json';
 export const METADATA_FILE = 'metadata.json';
+
+// JSONL file paths
+export const SESSIONS_JSONL_FILE = 'sessions.jsonl';
+export const ERROR_PATTERNS_JSONL_FILE = 'error-patterns.jsonl';
+export const SUCCESSFUL_FIXES_JSONL_FILE = 'successful-fixes.jsonl';
 
 // Search defaults
 export const DEFAULT_SEARCH_LIMIT = 10;
@@ -42,18 +44,18 @@ export const ERROR_MESSAGES = {
 };
 
 // Tool metadata
-export const TOOL_NAME = 'code_debug_think';
-export const SERVER_NAME = 'code-debug-iteration-server';
-export const SERVER_VERSION = '0.1.0';
+export const TOOL_NAME = 'debug_iteration';
+export const SERVER_NAME = 'debug-iteration-server';
+export const SERVER_VERSION = '0.2.0';
 
 // Actions
 export const ACTIONS = {
-  RECORD_STEP: 'record_step',
-  START_SESSION: 'start_session',
-  GET_SUMMARY: 'get_summary',
-  END_SESSION: 'end_session',
-  LIST_SESSIONS: 'list_sessions',
-  SEARCH_PATTERNS: 'search_patterns',
+  START: 'start',
+  THINK: 'think',
+  EXPERIMENT: 'experiment',
+  OBSERVE: 'observe',
+  SEARCH: 'search',
+  END: 'end',
 } as const;
 
 export type ActionType = typeof ACTIONS[keyof typeof ACTIONS];

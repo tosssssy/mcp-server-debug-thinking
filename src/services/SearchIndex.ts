@@ -47,6 +47,10 @@ export class SearchIndex {
   public removeSession(sessionId: string): void {
     this.index.delete(sessionId);
   }
+  
+  public hasSession(sessionId: string): boolean {
+    return this.index.has(sessionId);
+  }
 
   public search(query: SearchQuery, limit: number = 10): PatternMatch[] {
     const matches: Array<{ sessionId: string; similarity: number; indexEntry: IndexEntry }> = [];
@@ -94,9 +98,19 @@ export class SearchIndex {
     }
     
     for (const step of session.steps) {
+      // Include thinking steps in searchable text
+      if (step.thinkingSteps) {
+        for (const thinking of step.thinkingSteps) {
+          texts.push(thinking.thought);
+        }
+      }
+      
       if (step.hypothesis) {
         texts.push(step.hypothesis.cause);
         texts.push(...step.hypothesis.affectedCode);
+        if (step.hypothesis.thoughtConclusion) {
+          texts.push(step.hypothesis.thoughtConclusion);
+        }
       }
       
       if (step.experiment) {

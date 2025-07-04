@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/node/v/mcp-server-debug-iteration.svg)](https://nodejs.org)
 
-A Model Context Protocol (MCP) server that provides systematic debugging and code iteration tracking capabilities with intelligent pattern learning for Claude and other AI assistants.
+A streamlined Model Context Protocol (MCP) server for systematic debugging with integrated sequential thinking support and intelligent pattern learning.
 
 ## 🚀 Features
 
@@ -72,255 +72,178 @@ For VS Code with the MCP extension, add to your workspace settings:
 
 ## 📖 Usage
 
-The server provides a tool called `code_debug_think` for systematic debugging workflows.
+The server provides a single, streamlined tool called `debug_iteration` with intuitive actions.
 
-### Available Actions
+### Simple Workflow
 
-#### 1. Start a Debugging Session
+#### 1. Start a Session
 
 ```typescript
-// Start a new session
-await use_tool("code_debug_think", { action: "start_session" });
-
-// Start with a problem definition
-await use_tool("code_debug_think", { 
-  action: "start_session",
-  problem: {
-    description: "API endpoint fails intermittently",
-    errorMessage: "ECONNREFUSED",
-    expectedBehavior: "Should connect to database",
-    actualBehavior: "Connection refused errors"
-  },
-  metadata: {
+// Simple start
+await use_tool("debug_iteration", { 
+  action: "start",
+  problem: "API endpoint returns 500 error",
+  context: {
+    error: "TypeError: Cannot read property 'data' of undefined",
     language: "typescript",
-    framework: "express",
-    tags: ["api", "database", "connection"]
+    framework: "express"
   }
 });
+```
 
-// Or resume a specific session
-await use_tool("code_debug_think", { 
-  action: "start_session", 
-  sessionId: "debug-123456789" 
+#### 2. Think (Integrates with sequential-thinking)
+
+```typescript
+// Record a single thought
+await use_tool("debug_iteration", {
+  action: "think",
+  thought: "The error suggests the response object structure differs from expected",
+  confidence: 75
+});
+
+// Or multiple thoughts at once
+await use_tool("debug_iteration", {
+  action: "think", 
+  thought: [
+    "Response might be null or undefined",
+    "Need to add defensive programming",
+    "Should use optional chaining"
+  ]
 });
 ```
 
-#### 2. Record a Debugging Step
+#### 3. Experiment
 
 ```typescript
-await use_tool("code_debug_think", {
-  action: "record_step",
-  problem: {
-    description: "API endpoint returns 500 error",
-    errorMessage: "TypeError: Cannot read property 'data' of undefined",
-    expectedBehavior: "Should return user data with status 200",
-    actualBehavior: "Crashes with undefined error"
-  },
-  hypothesis: {
-    cause: "Response object structure differs from expected format",
-    affectedCode: ["src/api/users.js:45-50", "src/utils/response.js:12"],
-    confidence: 75
-  },
-  experiment: {
-    changes: [{
-      file: "src/api/users.js",
-      lineRange: [45, 50],
-      oldCode: "return response.data.user;",
-      newCode: "return response?.data?.user || null;",
-      reasoning: "Add optional chaining to safely access nested properties"
-    }],
-    testCommand: "npm test -- users.test.js",
-    expectedOutcome: "Tests pass and endpoint returns null for missing data"
-  },
-  result: {
-    success: true,
-    output: "All tests passed",
-    learning: "API responses need defensive programming for missing data"
-  },
-  nextAction: "fixed"
+await use_tool("debug_iteration", {
+  action: "experiment",
+  description: "Add optional chaining to safely access nested properties",
+  changes: [{
+    file: "src/api/users.js",
+    change: "return response?.data?.user || null;",
+    reason: "Prevent accessing properties of undefined"
+  }],
+  expected: "Tests pass and endpoint returns null for missing data"
 });
 ```
 
-#### 3. Get Session Summary
+#### 4. Observe Results
 
 ```typescript
-await use_tool("code_debug_think", { action: "get_summary" });
-// Returns: session statistics, patterns found, solutions applied
+await use_tool("debug_iteration", {
+  action: "observe",
+  success: true,
+  output: "All tests passed",
+  learning: "API responses need defensive programming for missing data",
+  next: "fixed"  // or "iterate" or "pivot"
+});
 ```
 
-#### 4. End Session
+#### 5. Search for Similar Issues
 
 ```typescript
-await use_tool("code_debug_think", { action: "end_session" });
-// Saves all data and learnings from the session
-```
-
-#### 5. List All Sessions
-
-```typescript
-await use_tool("code_debug_think", { action: "list_sessions" });
-// Returns: list of all debugging sessions with metadata
-```
-
-#### 6. Search for Similar Patterns
-
-```typescript
-// Basic search with error type
-await use_tool("code_debug_think", {
-  action: "search_patterns",
-  searchQuery: {
-    errorType: "TypeError",
-    keywords: ["undefined", "property"],
-    searchMode: "fuzzy",        // "exact" or "fuzzy" (default)
-    keywordLogic: "OR",         // "AND" or "OR" (default)
-    includeDebugInfo: true      // Get debug statistics
+await use_tool("debug_iteration", {
+  action: "search",
+  query: "TypeError undefined property access",
+  filters: {
+    confidence: 70,
+    language: "typescript"
   }
 });
-
-// Advanced search with filters
-await use_tool("code_debug_think", {
-  action: "search_patterns",
-  searchQuery: {
-    errorType: "ECONNREFUSED",
-    keywords: ["database", "connection"],
-    language: "javascript",
-    framework: "express",
-    confidence_threshold: 70,
-    searchMode: "exact",
-    keywordLogic: "AND",
-    limit: 5
-  }
-});
-
-// Metadata-only search (find all React debugging sessions)
-await use_tool("code_debug_think", {
-  action: "search_patterns",
-  searchQuery: {
-    framework: "react",
-    includeDebugInfo: true
-  }
-});
-
-// Language-specific search with confidence filter
-await use_tool("code_debug_think", {
-  action: "search_patterns",
-  searchQuery: {
-    language: "typescript",
-    confidence_threshold: 80,
-    limit: 10
-  }
-});
-
-// Returns: 
-// - Similar problems with their solutions
-// - Suggested approaches for high-similarity matches
-// - Debug info showing search statistics (if requested)
 ```
 
-### Next Actions Explained
+#### 6. End Session
 
-- **`fixed`** - Problem is completely resolved
-- **`iterate`** - Try a different solution with the same hypothesis
-- **`pivot`** - Current hypothesis is wrong, need a new approach
-- **`research`** - Need more information before proceeding
+```typescript
+// End without summary
+await use_tool("debug_iteration", { action: "end" });
+
+// End with summary
+await use_tool("debug_iteration", { 
+  action: "end",
+  summary: true
+});
+```
+
+### Sequential Thinking Integration
+
+This tool works seamlessly with the sequential-thinking MCP server:
+
+```typescript
+// Use sequential-thinking to analyze the problem
+const thinking = await sequential_thinking({
+  thought: "This TypeError suggests a null reference issue...",
+  thoughtNumber: 1,
+  totalThoughts: 3
+});
+
+// Feed the thinking directly into debug_iteration
+await use_tool("debug_iteration", {
+  action: "think",
+  thought: thinking.thought,
+  confidence: 85
+});
+```
 
 ## 📁 Data Storage
 
-All debugging data is persisted in `.debug-iteration-mcp/` directory:
+All data is stored in `.debug-iteration-mcp/` using efficient JSONL format:
 
 ```plaintext
 .debug-iteration-mcp/
-├── error-patterns.json      # Learned error patterns
-├── successful-fixes.json    # Database of working solutions
-├── metadata.json           # Statistics and metadata
-└── sessions/              # Individual session records
-    ├── debug-xxxxx.json
-    └── debug-yyyyy.json
+├── sessions.jsonl           # All debugging sessions
+├── error-patterns.jsonl     # Learned error patterns
+├── successful-fixes.jsonl   # Working solutions
+└── metadata.json           # Statistics
 ```
 
-## 🧪 Examples
-
-### Example 1: Debugging a Memory Leak
+## 🧪 Complete Example
 
 ```typescript
-// Start investigation
-await use_tool("code_debug_think", {
-  action: "record_step",
-  problem: {
-    description: "Memory usage increases over time",
-    errorMessage: "JavaScript heap out of memory",
-    expectedBehavior: "Stable memory usage",
-    actualBehavior: "Memory grows unbounded"
-  },
-  hypothesis: {
-    cause: "Event listeners not being removed",
-    affectedCode: ["src/components/Dashboard.js"],
-    confidence: 60
-  },
-  experiment: {
-    changes: [{
-      file: "src/components/Dashboard.js",
-      lineRange: [85, 90],
-      oldCode: "window.addEventListener('resize', this.handleResize);",
-      newCode: "this.resizeHandler = this.handleResize.bind(this);\nwindow.addEventListener('resize', this.resizeHandler);",
-      reasoning: "Store reference to bound function for proper cleanup"
-    }],
-    expectedOutcome: "Memory usage stabilizes"
-  }
-});
-```
-
-### Example 2: Searching Similar Problems
-
-Find solutions from past debugging sessions:
-
-```typescript
-const results = await use_tool("code_debug_think", {
-  action: "search_patterns",
-  searchQuery: {
-    errorType: "TypeError",
-    keywords: ["cannot read", "undefined"],
-    confidence_threshold: 60
-  }
+// 1. Start debugging
+await use_tool("debug_iteration", {
+  action: "start",
+  problem: "User profile page crashes",
+  context: { error: "TypeError: Cannot read property 'name' of undefined" }
 });
 
-// Returns similar problems with their solutions:
-{
-  "matches": [{
-    "sessionId": "debug-167890",
-    "similarity": 0.85,
-    "problem": {
-      "description": "User profile page crashes",
-      "errorMessage": "TypeError: Cannot read property 'name' of undefined"
-    },
-    "solution": {
-      "hypothesis": "User data not loaded before render",
-      "changes": [{
-        "file": "UserProfile.js",
-        "reasoning": "Add loading state and null checks"
-      }],
-      "learning": "Always validate API responses before accessing nested properties"
-    },
-    "metadata": {
-      "confidence": 85,
-      "language": "javascript",
-      "framework": "react"
-    }
-  }]
-}
-```
+// 2. Think about the problem
+await use_tool("debug_iteration", {
+  action: "think",
+  thought: "User data might not be loaded before render"
+});
 
-### Example 3: Learning from Patterns
+// 3. Plan an experiment
+await use_tool("debug_iteration", {
+  action: "experiment",
+  description: "Add loading state and null checks",
+  changes: [{
+    file: "UserProfile.js",
+    change: "if (!user) return <Loading />",
+    reason: "Prevent rendering before data loads"
+  }],
+  expected: "Page shows loading state instead of crashing"
+});
 
-After multiple debugging sessions, the server learns patterns:
+// 4. Test and observe
+await use_tool("debug_iteration", {
+  action: "observe",
+  success: true,
+  learning: "Always validate data before rendering",
+  next: "fixed"
+});
 
-```json
-{
-  "pattern": "Cannot read property '.*' of undefined",
-  "commonCause": "Missing null checks or API response validation",
-  "suggestedFix": "Add optional chaining or default values",
-  "occurrences": 15
-}
+// 5. Search for similar issues
+await use_tool("debug_iteration", {
+  action: "search",
+  query: "null reference TypeError"
+});
+
+// 6. End with summary
+await use_tool("debug_iteration", {
+  action: "end",
+  summary: true
+});
 ```
 
 ## 🛠️ Development

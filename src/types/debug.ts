@@ -13,10 +13,23 @@ export interface Problem {
   actualBehavior: string;
 }
 
+export interface ThinkingStep {
+  thought: string;
+  thoughtNumber: number;
+  totalThoughts: number;
+  timestamp: Date;
+  isRevision?: boolean;
+  revisesThought?: number;
+  branchFromThought?: number;
+  branchId?: string;
+}
+
 export interface Hypothesis {
   cause: string;
   affectedCode: string[];
   confidence: number;
+  thinkingChain?: ThinkingStep[];  // 思考プロセスの記録
+  thoughtConclusion?: string;       // sequential-thinkingの最終結論
 }
 
 export interface Experiment {
@@ -40,6 +53,7 @@ export interface CodeThinkingStep {
   experiment?: Experiment;
   result?: Result;
   nextAction?: "fixed" | "iterate" | "pivot" | "research";
+  thinkingSteps?: ThinkingStep[];  // このステップに関連する思考プロセス
 }
 
 export interface ErrorPattern {

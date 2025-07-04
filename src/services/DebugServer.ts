@@ -1,4 +1,3 @@
-import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import chalk from 'chalk';
@@ -11,23 +10,37 @@ import {
   Hypothesis,
   Experiment,
   Result,
-  CodeChange
+  ThinkingStep
 } from '../types/debug.js';
-import { SearchQuery, PatternMatch } from '../types/search.js';
+import { SearchQuery } from '../types/search.js';
+import { 
+  StartParams, 
+  ThinkParams, 
+  ExperimentParams, 
+  ObserveParams, 
+  SearchParams 
+} from '../types/actions.js';
 import { SearchIndex } from './SearchIndex.js';
 import { logger } from '../utils/logger.js';
 import { formatDebugStep, createJsonResponse } from '../utils/format.js';
-import { ensureDirectory, readJsonFile, writeJsonFile, listJsonFiles } from '../utils/storage.js';
+import { 
+  ensureDirectory, 
+  writeJsonFile,
+  appendJsonLine,
+  readJsonLines,
+  readJsonLinesStream,
+  fileExists
+} from '../utils/storage.js';
 import {
   DATA_DIR_NAME,
-  SESSIONS_DIR,
-  ERROR_PATTERNS_FILE,
-  SUCCESSFUL_FIXES_FILE,
   METADATA_FILE,
   ERROR_MESSAGES,
   DEFAULT_SEARCH_LIMIT,
   MIN_SEARCH_LIMIT,
-  MAX_SEARCH_LIMIT
+  MAX_SEARCH_LIMIT,
+  SESSIONS_JSONL_FILE,
+  ERROR_PATTERNS_JSONL_FILE,
+  SUCCESSFUL_FIXES_JSONL_FILE
 } from '../constants.js';
 
 export class DebugServer {
@@ -50,7 +63,6 @@ export class DebugServer {
   private async initializeStorage(): Promise<void> {
     try {
       await ensureDirectory(this.dataDir);
-      await ensureDirectory(path.join(this.dataDir, SESSIONS_DIR));
       await this.loadKnowledge();
       logger.dim(`📁 Using data directory: ${this.dataDir}`);
     } catch (error) {
@@ -59,21 +71,17 @@ export class DebugServer {
   }
 
   private async loadKnowledge(): Promise<void> {
-    // Load error patterns
-    const patterns = await readJsonFile<ErrorPattern[]>(
-      path.join(this.dataDir, ERROR_PATTERNS_FILE)
-    );
-    if (patterns) {
-      this.errorPatterns = patterns;
+    // Load error patterns from JSONL
+    const errorPatternsPath = path.join(this.dataDir, ERROR_PATTERNS_JSONL_FILE);
+    this.errorPatterns = await readJsonLines<ErrorPattern>(errorPatternsPath);
+    if (this.errorPatterns.length > 0) {
       logger.success(`✓ Loaded ${this.errorPatterns.length} error patterns`);
     }
 
-    // Load successful fixes
-    const fixes = await readJsonFile<Fix[]>(
-      path.join(this.dataDir, SUCCESSFUL_FIXES_FILE)
-    );
-    if (fixes) {
-      this.successfulFixes = fixes;
+    // Load successful fixes from JSONL
+    const fixesPath = path.join(this.dataDir, SUCCESSFUL_FIXES_JSONL_FILE);
+    this.successfulFixes = await readJsonLines<Fix>(fixesPath);
+    if (this.successfulFixes.length > 0) {
       logger.success(`✓ Loaded ${this.successfulFixes.length} successful fixes`);
     }
     
@@ -82,17 +90,13 @@ export class DebugServer {
   }
 
   private async loadSessionsIntoIndex(): Promise<void> {
-    const sessionsDir = path.join(this.dataDir, SESSIONS_DIR);
-    const files = await listJsonFiles(sessionsDir);
     let loadedSessions = 0;
     
-    for (const file of files) {
-      try {
-        const savedSession = await readJsonFile<any>(
-          path.join(sessionsDir, file)
-        );
-        
-        if (savedSession) {
+    // Load from JSONL file
+    const sessionsJsonlPath = path.join(this.dataDir, SESSIONS_JSONL_FILE);
+    if (await fileExists(sessionsJsonlPath)) {
+      for await (const savedSession of readJsonLinesStream<any>(sessionsJsonlPath)) {
+        try {
           const session: DebugSession = {
             id: savedSession.id,
             startTime: new Date(savedSession.startTime),
@@ -106,9 +110,9 @@ export class DebugServer {
           
           this.searchIndex.addSession(session.id, session);
           loadedSessions++;
+        } catch (err) {
+          logger.warn(`Failed to load session from JSONL:`, err);
         }
-      } catch (err) {
-        logger.warn(`Failed to load session ${file}:`, err);
       }
     }
     
@@ -118,16 +122,8 @@ export class DebugServer {
   }
 
   private async saveKnowledge(): Promise<void> {
-    await writeJsonFile(
-      path.join(this.dataDir, ERROR_PATTERNS_FILE),
-      this.errorPatterns
-    );
-
-    await writeJsonFile(
-      path.join(this.dataDir, SUCCESSFUL_FIXES_FILE),
-      this.successfulFixes
-    );
-
+    // Note: With JSONL, we append data incrementally in learnFromResult
+    // This method now only updates metadata
     await writeJsonFile(
       path.join(this.dataDir, METADATA_FILE),
       {
@@ -140,21 +136,21 @@ export class DebugServer {
   }
 
   private async countSessions(): Promise<number> {
-    const files = await listJsonFiles(path.join(this.dataDir, SESSIONS_DIR));
-    return files.length;
+    const sessionsPath = path.join(this.dataDir, SESSIONS_JSONL_FILE);
+    if (!await fileExists(sessionsPath)) return 0;
+    
+    let count = 0;
+    for await (const _ of readJsonLinesStream<any>(sessionsPath)) {
+      count++;
+    }
+    return count;
   }
 
   private async saveSession(sessionId: string): Promise<void> {
     const session = this.debugSessions.get(sessionId);
     if (!session) return;
 
-    const sessionPath = path.join(
-      this.dataDir,
-      SESSIONS_DIR,
-      `${sessionId}.json`
-    );
-    
-    await writeJsonFile(sessionPath, {
+    const sessionData = {
       id: sessionId,
       startTime: session.startTime,
       endTime: new Date(),
@@ -166,14 +162,18 @@ export class DebugServer {
         successfulFixes: session.steps.filter((s) => s.result?.success).length,
         finalStatus: session.steps[session.steps.length - 1]?.nextAction || 'incomplete',
       },
-    });
+    };
+    
+    // Append to JSONL file
+    const sessionsPath = path.join(this.dataDir, SESSIONS_JSONL_FILE);
+    await appendJsonLine(sessionsPath, sessionData);
   }
 
   private generateId(): string {
     return `debug-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   }
 
-  private learnFromResult(step: CodeThinkingStep, sessionProblem?: Problem): void {
+  private async learnFromResult(step: CodeThinkingStep, sessionProblem?: Problem): Promise<void> {
     if (!step.result) return;
 
     const problem = step.problem || sessionProblem;
@@ -186,28 +186,40 @@ export class DebugServer {
 
       if (existingPattern) {
         existingPattern.occurrences++;
+        // For JSONL, we need to rewrite the entire file to update occurrences
+        // In a production system, you might want to use a database instead
       } else {
-        this.errorPatterns.push({
+        const newPattern: ErrorPattern = {
           pattern: problem.errorMessage,
           commonCause: step.hypothesis.cause,
           suggestedFix: step.experiment?.changes[0]?.reasoning || '',
           occurrences: 1,
-        });
+        };
+        this.errorPatterns.push(newPattern);
+        
+        // Append to JSONL file
+        const errorPatternsPath = path.join(this.dataDir, ERROR_PATTERNS_JSONL_FILE);
+        await appendJsonLine(errorPatternsPath, newPattern);
       }
     }
 
     // Record successful fixes
     if (step.result.success && step.experiment) {
-      this.successfulFixes.push({
+      const newFix: Fix = {
         problemId: step.id,
         solution: step.result.learning,
         changes: step.experiment.changes,
         verified: true,
-      });
+      };
+      this.successfulFixes.push(newFix);
+      
+      // Append to JSONL file
+      const fixesPath = path.join(this.dataDir, SUCCESSFUL_FIXES_JSONL_FILE);
+      await appendJsonLine(fixesPath, newFix);
     }
 
-    // Auto-save knowledge after learning
-    this.saveKnowledge().catch(error => logger.error('Failed to save knowledge:', error));
+    // Update metadata
+    await this.saveKnowledge().catch(error => logger.error('Failed to save knowledge:', error));
   }
 
   public startSession(
@@ -255,10 +267,10 @@ export class DebugServer {
     return id;
   }
 
-  public recordStep(input: unknown): {
+  public async recordStep(input: unknown): Promise<{
     content: Array<{ type: string; text: string }>;
     isError?: boolean;
-  } {
+  }> {
     try {
       const data = input as Record<string, unknown>;
 
@@ -298,7 +310,7 @@ export class DebugServer {
       this.searchIndex.addSession(this.currentSessionId!, session);
 
       if (validStep.result) {
-        this.learnFromResult(validStep, session.problem);
+        await this.learnFromResult(validStep, session.problem);
       }
 
       if (validStep.hypothesis || validStep.experiment) {
@@ -351,33 +363,33 @@ export class DebugServer {
     let session = this.debugSessions.get(id);
     
     if (!session) {
-      try {
-        const sessionPath = path.join(this.dataDir, SESSIONS_DIR, `${id}.json`);
-        const savedSession = await readJsonFile<any>(sessionPath);
-        
-        if (savedSession) {
-          session = {
-            id: savedSession.id,
-            startTime: new Date(savedSession.startTime),
-            problem: savedSession.problem,
-            steps: savedSession.steps.map((step: any) => ({
-              ...step,
-              timestamp: new Date(step.timestamp)
-            })),
-            metadata: savedSession.metadata
-          };
+      // Try to find in JSONL file
+      const sessionsPath = path.join(this.dataDir, SESSIONS_JSONL_FILE);
+      if (await fileExists(sessionsPath)) {
+        for await (const savedSession of readJsonLinesStream<any>(sessionsPath)) {
+          if (savedSession.id === id) {
+            session = {
+              id: savedSession.id,
+              startTime: new Date(savedSession.startTime),
+              problem: savedSession.problem,
+              steps: savedSession.steps.map((step: any) => ({
+                ...step,
+                timestamp: new Date(step.timestamp)
+              })),
+              metadata: savedSession.metadata
+            };
+            break;
+          }
         }
-      } catch (error) {
-        return createJsonResponse({ 
-          error: ERROR_MESSAGES.SESSION_NOT_FOUND, 
-          sessionId: id,
-          hint: 'Session may have been deleted or the ID is incorrect'
-        });
       }
     }
 
     if (!session) {
-      return createJsonResponse({ error: ERROR_MESSAGES.SESSION_NOT_FOUND });
+      return createJsonResponse({ 
+        error: ERROR_MESSAGES.SESSION_NOT_FOUND, 
+        sessionId: id,
+        hint: 'Session not found in active sessions or saved history'
+      });
     }
 
     const summary = {
@@ -445,13 +457,11 @@ export class DebugServer {
     content: Array<{ type: string; text: string }>;
   }> {
     try {
-      const sessionsDir = path.join(this.dataDir, SESSIONS_DIR);
-      const files = await listJsonFiles(sessionsDir);
+      const sessionsPath = path.join(this.dataDir, SESSIONS_JSONL_FILE);
       const sessions = [];
 
-      for (const file of files) {
-        const session = await readJsonFile<any>(path.join(sessionsDir, file));
-        if (session) {
+      if (await fileExists(sessionsPath)) {
+        for await (const session of readJsonLinesStream<any>(sessionsPath)) {
           sessions.push({
             id: session.id,
             startTime: session.startTime,
@@ -560,5 +570,340 @@ export class DebugServer {
 
   public async saveAllKnowledge(): Promise<void> {
     return this.saveKnowledge();
+  }
+
+  public recordThinking(sessionId: string | undefined, thinkingSteps: ThinkingStep[]): {
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  } {
+    const id = sessionId || this.currentSessionId;
+    if (!id) {
+      return createJsonResponse({ 
+        error: ERROR_MESSAGES.NO_ACTIVE_SESSION,
+        hint: "Start a session first before recording thinking steps"
+      }, true);
+    }
+
+    const session = this.debugSessions.get(id);
+    if (!session) {
+      return createJsonResponse({ error: ERROR_MESSAGES.SESSION_NOT_FOUND }, true);
+    }
+
+    // Add thinking steps to the latest step or create a new one
+    const lastStep = session.steps[session.steps.length - 1];
+    if (lastStep && !lastStep.result) {
+      // Add to existing step if it doesn't have a result yet
+      lastStep.thinkingSteps = [...(lastStep.thinkingSteps || []), ...thinkingSteps];
+    } else {
+      // Create a new step with just thinking steps
+      const newStep: CodeThinkingStep = {
+        id: this.generateId(),
+        timestamp: new Date(),
+        thinkingSteps: thinkingSteps
+      };
+      session.steps.push(newStep);
+    }
+
+    // Update search index
+    this.searchIndex.removeSession(id);
+    this.searchIndex.addSession(id, session);
+
+    return createJsonResponse({
+      sessionId: id,
+      recorded: true,
+      thinkingStepsCount: thinkingSteps.length,
+      totalSteps: session.steps.length
+    });
+  }
+
+  public convertThinkingToHypothesis(
+    sessionId: string | undefined,
+    thinkingConclusion: string,
+    confidence?: number
+  ): {
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  } {
+    const id = sessionId || this.currentSessionId;
+    if (!id) {
+      return createJsonResponse({ 
+        error: ERROR_MESSAGES.NO_ACTIVE_SESSION,
+        hint: "Start a session first"
+      }, true);
+    }
+
+    const session = this.debugSessions.get(id);
+    if (!session) {
+      return createJsonResponse({ error: ERROR_MESSAGES.SESSION_NOT_FOUND }, true);
+    }
+
+    // Find the latest step with thinking steps but no hypothesis
+    const stepWithThinking = [...session.steps].reverse().find(
+      step => step.thinkingSteps && step.thinkingSteps.length > 0 && !step.hypothesis
+    );
+
+    if (!stepWithThinking) {
+      return createJsonResponse({
+        error: "No thinking steps found to convert to hypothesis",
+        hint: "Record thinking steps first using record_thinking action"
+      }, true);
+    }
+
+    // Create hypothesis from thinking conclusion
+    const hypothesis: Hypothesis = {
+      cause: thinkingConclusion,
+      affectedCode: [], // To be filled by the user
+      confidence: confidence || 70, // Default confidence
+      thinkingChain: stepWithThinking.thinkingSteps,
+      thoughtConclusion: thinkingConclusion
+    };
+
+    stepWithThinking.hypothesis = hypothesis;
+
+    // Update search index
+    this.searchIndex.removeSession(id);
+    this.searchIndex.addSession(id, session);
+
+    return createJsonResponse({
+      sessionId: id,
+      stepId: stepWithThinking.id,
+      hypothesis: hypothesis,
+      hint: "Now add affected code and create an experiment to test this hypothesis"
+    });
+  }
+
+  // New simplified methods
+  public start(params: StartParams): {
+    content: Array<{ type: string; text: string }>;
+  } {
+    const sessionId = this.generateId();
+    const problem = params.problem ? {
+      description: params.problem,
+      errorMessage: params.context?.error || '',
+      expectedBehavior: '',
+      actualBehavior: ''
+    } : undefined;
+
+    const metadata = params.context ? {
+      language: params.context.language,
+      framework: params.context.framework,
+      tags: params.context.tags
+    } : undefined;
+
+    this.startSession(sessionId, problem, metadata);
+
+    return createJsonResponse({
+      sessionId,
+      status: 'started',
+      message: `Debug session ${sessionId} started`
+    });
+  }
+
+  public think(params: ThinkParams): {
+    content: Array<{ type: string; text: string }>;
+  } {
+    if (!this.currentSessionId) {
+      return createJsonResponse({
+        error: ERROR_MESSAGES.NO_ACTIVE_SESSION,
+        hint: "Start a session first"
+      }, true);
+    }
+
+    const session = this.debugSessions.get(this.currentSessionId);
+    if (!session) {
+      return createJsonResponse({ error: ERROR_MESSAGES.SESSION_NOT_FOUND }, true);
+    }
+
+    const thoughts = Array.isArray(params.thought) ? params.thought : [params.thought];
+    const thinkingSteps: ThinkingStep[] = thoughts.map((thought, index) => ({
+      thought,
+      thoughtNumber: index + 1,
+      totalThoughts: thoughts.length,
+      timestamp: new Date()
+    }));
+
+    // Create a new step with thinking and hypothesis
+    const hypothesis: Hypothesis = {
+      cause: thoughts[thoughts.length - 1], // Last thought as cause
+      affectedCode: [],
+      confidence: params.confidence || 70,
+      thinkingChain: thinkingSteps,
+      thoughtConclusion: thoughts.join(' ')
+    };
+
+    const step: CodeThinkingStep = {
+      id: this.generateId(),
+      timestamp: new Date(),
+      thinkingSteps,
+      hypothesis
+    };
+
+    session.steps.push(step);
+
+    // Update search index
+    this.searchIndex.removeSession(this.currentSessionId);
+    this.searchIndex.addSession(this.currentSessionId, session);
+
+    return createJsonResponse({
+      stepId: step.id,
+      recorded: true,
+      hypothesis: hypothesis.cause,
+      confidence: hypothesis.confidence
+    });
+  }
+
+  public experiment(params: ExperimentParams): {
+    content: Array<{ type: string; text: string }>;
+  } {
+    if (!this.currentSessionId) {
+      return createJsonResponse({
+        error: ERROR_MESSAGES.NO_ACTIVE_SESSION,
+        hint: "Start a session first"
+      }, true);
+    }
+
+    const session = this.debugSessions.get(this.currentSessionId);
+    if (!session) {
+      return createJsonResponse({ error: ERROR_MESSAGES.SESSION_NOT_FOUND }, true);
+    }
+
+    // Find the latest step with hypothesis but no experiment
+    const stepForExperiment = [...session.steps].reverse().find(
+      step => step.hypothesis && !step.experiment
+    );
+
+    if (!stepForExperiment) {
+      return createJsonResponse({
+        error: "No hypothesis found to experiment on",
+        hint: "Use 'think' action first to create a hypothesis"
+      }, true);
+    }
+
+    const experiment: Experiment = {
+      changes: params.changes.map(c => ({
+        file: c.file,
+        lineRange: [0, 0], // Simplified - not tracking line ranges
+        oldCode: '',
+        newCode: c.change,
+        reasoning: c.reason
+      })),
+      expectedOutcome: params.expected
+    };
+
+    stepForExperiment.experiment = experiment;
+
+    // Update search index
+    this.searchIndex.removeSession(this.currentSessionId);
+    this.searchIndex.addSession(this.currentSessionId, session);
+
+    return createJsonResponse({
+      stepId: stepForExperiment.id,
+      experiment: params.description,
+      changes: params.changes.length,
+      expected: params.expected
+    });
+  }
+
+  public async observe(params: ObserveParams): Promise<{
+    content: Array<{ type: string; text: string }>;
+  }> {
+    if (!this.currentSessionId) {
+      return createJsonResponse({
+        error: ERROR_MESSAGES.NO_ACTIVE_SESSION,
+        hint: "Start a session first"
+      }, true);
+    }
+
+    const session = this.debugSessions.get(this.currentSessionId);
+    if (!session) {
+      return createJsonResponse({ error: ERROR_MESSAGES.SESSION_NOT_FOUND }, true);
+    }
+
+    // Find the latest step with experiment but no result
+    const stepForResult = [...session.steps].reverse().find(
+      step => step.experiment && !step.result
+    );
+
+    if (!stepForResult) {
+      return createJsonResponse({
+        error: "No experiment found to observe results for",
+        hint: "Use 'experiment' action first"
+      }, true);
+    }
+
+    const result: Result = {
+      success: params.success,
+      output: params.output,
+      learning: params.learning,
+      newErrors: []
+    };
+
+    stepForResult.result = result;
+    stepForResult.nextAction = params.next || (params.success ? 'fixed' : 'iterate');
+
+    // Learn from result
+    await this.learnFromResult(stepForResult, session.problem);
+
+    // Update search index
+    this.searchIndex.removeSession(this.currentSessionId);
+    this.searchIndex.addSession(this.currentSessionId, session);
+
+    return createJsonResponse({
+      stepId: stepForResult.id,
+      success: params.success,
+      learning: params.learning,
+      nextAction: stepForResult.nextAction,
+      sessionComplete: stepForResult.nextAction === 'fixed'
+    });
+  }
+
+  public search(params: SearchParams): {
+    content: Array<{ type: string; text: string }>;
+  } {
+    // Convert simplified params to SearchQuery
+    const searchQuery: SearchQuery = {
+      keywords: params.query.split(' '),
+      confidence_threshold: params.filters?.confidence,
+      language: params.filters?.language,
+      searchMode: 'fuzzy',
+      keywordLogic: 'OR',
+      includeDebugInfo: false
+    };
+
+    const limit = params.filters?.limit || DEFAULT_SEARCH_LIMIT;
+    const matches = this.searchIndex.search(searchQuery, limit);
+
+    return createJsonResponse({
+      query: params.query,
+      matches: matches.map(m => ({
+        sessionId: m.sessionId,
+        similarity: m.similarity,
+        problem: m.problem.description,
+        solution: m.solution.learning,
+        confidence: m.metadata.confidence
+      })),
+      total: matches.length
+    });
+  }
+
+  public async end(summary: boolean = false): Promise<{
+    content: Array<{ type: string; text: string }>;
+  }> {
+    if (!this.currentSessionId) {
+      return createJsonResponse({
+        error: ERROR_MESSAGES.NO_SESSION_TO_END
+      }, true);
+    }
+
+    const sessionId = this.currentSessionId;
+    const session = this.debugSessions.get(sessionId);
+    
+    if (summary && session) {
+      const summaryData = await this.getSessionSummary(sessionId);
+      await this.endSession(sessionId);
+      return summaryData;
+    } else {
+      return await this.endSession(sessionId);
+    }
   }
 }
