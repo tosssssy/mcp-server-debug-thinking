@@ -11,7 +11,7 @@ We release patches for security vulnerabilities. Which versions are eligible for
 
 ## Reporting a Vulnerability
 
-We take the security of MCP Server Debug Iteration seriously. If you have discovered a security vulnerability in this project, please report it to us as described below.
+We take the security of MCP Server Debug Thinking seriously. If you have discovered a security vulnerability in this project, please report it to us as described below.
 
 ### Reporting Process
 
@@ -46,16 +46,16 @@ This information will help us triage your report more quickly.
 
 ## Security Best Practices for Users
 
-When using MCP Server Debug Iteration:
+When using MCP Server Debug Thinking:
 
 1. **Keep Dependencies Updated**: Regularly update the package and its dependencies
-2. **Secure Storage**: The `.debug-iteration-mcp/` directory contains debugging data. Ensure it's properly secured and not exposed publicly
+2. **Secure Storage**: The `.debug-thinking-mcp/` directory contains debugging data. Ensure it's properly secured and not exposed publicly
 3. **Environment Variables**: Never commit sensitive environment variables to version control
 4. **Access Control**: Limit access to the MCP server to trusted clients only
 
 ## Security Features
 
-The MCP Server Debug Iteration includes several security features:
+The MCP Server Debug Thinking includes several security features:
 
 - Data is stored locally in the project directory
 - No external network requests are made
@@ -68,4 +68,4 @@ For any security-related questions, please contact:
 - Email: your.email@example.com
 - PGP Key: [Link to PGP key if available]
 
-Thank you for helping keep MCP Server Debug Iteration and its users safe!
+Thank you for helping keep MCP Server Debug Thinking and its users safe!

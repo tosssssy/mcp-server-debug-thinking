@@ -33,7 +33,7 @@ Thumbs.db
 # Logs and debug data
 *.log
 npm-debug.log*
-.debug-iteration-mcp/
+.debug-thinking-mcp/
 
 # Test coverage
 coverage/

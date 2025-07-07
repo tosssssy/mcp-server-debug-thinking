@@ -4,7 +4,7 @@ import { ThinkingStep } from '../types/debug.js';
  * Sequential Thinking Integration Helper
  * 
  * This module provides utilities to integrate sequential-thinking MCP output
- * with debug-iteration-mcp for seamless debugging workflows.
+ * with debug-thinking-mcp for seamless debugging workflows.
  */
 
 export interface SequentialThinkingOutput {

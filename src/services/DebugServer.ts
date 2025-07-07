@@ -42,6 +42,7 @@ import {
   ERROR_PATTERNS_JSONL_FILE,
   SUCCESSFUL_FIXES_JSONL_FILE
 } from '../constants.js';
+import { createThinkingWorkflow } from '../utils/sequentialThinkingIntegration.js';
 
 export class DebugServer {
   private debugSessions: Map<string, DebugSession> = new Map();
@@ -105,7 +106,10 @@ export class DebugServer {
               ...step,
               timestamp: new Date(step.timestamp)
             })),
-            metadata: savedSession.metadata
+            metadata: savedSession.metadata,
+            thoughtHistory: savedSession.thoughtHistory || [],
+            branches: savedSession.branches || {},
+            currentBranch: savedSession.currentBranch
           };
           
           this.searchIndex.addSession(session.id, session);
@@ -241,7 +245,10 @@ export class DebugServer {
       startTime: new Date(),
       problem,
       steps: [],
-      metadata: normalizedMetadata
+      metadata: normalizedMetadata,
+      thoughtHistory: [],
+      branches: {},
+      currentBranch: undefined
     };
     
     this.debugSessions.set(id, session);
@@ -376,7 +383,10 @@ export class DebugServer {
                 ...step,
                 timestamp: new Date(step.timestamp)
               })),
-              metadata: savedSession.metadata
+              metadata: savedSession.metadata,
+              thoughtHistory: savedSession.thoughtHistory || [],
+              branches: savedSession.branches || {},
+              currentBranch: savedSession.currentBranch
             };
             break;
           }
@@ -397,7 +407,7 @@ export class DebugServer {
       sessionProblem: session.problem,
       totalSteps: session.steps.length,
       successfulFixes: session.steps.filter((s) => s.result?.success).length,
-      iterations: session.steps.filter((s) => s.nextAction === 'iterate').length,
+      experimentsRepeated: session.steps.filter((s) => s.nextAction === 'iterate').length,
       pivots: session.steps.filter((s) => s.nextAction === 'pivot').length,
       averageConfidence:
         session.steps.length > 0
@@ -714,41 +724,95 @@ export class DebugServer {
       return createJsonResponse({ error: ERROR_MESSAGES.SESSION_NOT_FOUND }, true);
     }
 
-    const thoughts = Array.isArray(params.thought) ? params.thought : [params.thought];
-    const thinkingSteps: ThinkingStep[] = thoughts.map((thought, index) => ({
-      thought,
-      thoughtNumber: index + 1,
-      totalThoughts: thoughts.length,
-      timestamp: new Date()
-    }));
+    // Validate thought number sequence
+    if (params.thoughtNumber !== session.thoughtHistory.length + 1 && !params.isRevision && !params.branchFromThought) {
+      return createJsonResponse({
+        error: `Invalid thought number. Expected ${session.thoughtHistory.length + 1}, got ${params.thoughtNumber}`,
+        hint: "Thoughts must be sequential unless revising or branching"
+      }, true);
+    }
 
-    // Create a new step with thinking and hypothesis
-    const hypothesis: Hypothesis = {
-      cause: thoughts[thoughts.length - 1], // Last thought as cause
-      affectedCode: [],
-      confidence: params.confidence || 70,
-      thinkingChain: thinkingSteps,
-      thoughtConclusion: thoughts.join(' ')
-    };
-
-    const step: CodeThinkingStep = {
-      id: this.generateId(),
+    // Create thinking step
+    const thinkingStep: ThinkingStep = {
+      thought: params.thought,
+      thoughtNumber: params.thoughtNumber,
+      totalThoughts: params.totalThoughts,
       timestamp: new Date(),
-      thinkingSteps,
-      hypothesis
+      isRevision: params.isRevision,
+      revisesThought: params.revisesThought,
+      branchFromThought: params.branchFromThought,
+      branchId: params.branchId
     };
 
-    session.steps.push(step);
+    // Handle branching
+    if (params.branchFromThought && params.branchId) {
+      if (!session.branches[params.branchId]) {
+        session.branches[params.branchId] = [];
+      }
+      session.branches[params.branchId].push(thinkingStep);
+      session.currentBranch = params.branchId;
+    } else {
+      // Add to main thought history
+      session.thoughtHistory.push(thinkingStep);
+    }
+
+    // If this is the last thought, generate hypothesis
+    if (!params.nextThoughtNeeded) {
+      // Use the utility function to create hypothesis from thought history
+      const allThoughts = session.currentBranch 
+        ? [...session.thoughtHistory, ...session.branches[session.currentBranch]]
+        : session.thoughtHistory;
+      
+      const { hypothesis } = createThinkingWorkflow(
+        allThoughts.map(t => ({
+          thought: t.thought,
+          nextThoughtNeeded: false,
+          thoughtNumber: t.thoughtNumber,
+          totalThoughts: t.totalThoughts,
+          isRevision: t.isRevision,
+          revisesThought: t.revisesThought,
+          branchFromThought: t.branchFromThought,
+          branchId: t.branchId
+        }))
+      );
+
+      // Create a new step with the hypothesis
+      const step: CodeThinkingStep = {
+        id: this.generateId(),
+        timestamp: new Date(),
+        thinkingSteps: allThoughts,
+        hypothesis: hypothesis
+      };
+
+      session.steps.push(step);
+
+      // Update search index
+      this.searchIndex.removeSession(this.currentSessionId);
+      this.searchIndex.addSession(this.currentSessionId, session);
+
+      return createJsonResponse({
+        thoughtNumber: params.thoughtNumber,
+        totalThoughts: params.totalThoughts,
+        nextThoughtNeeded: false,
+        hypothesis: hypothesis.cause,
+        confidence: hypothesis.confidence,
+        affectedCode: hypothesis.affectedCode,
+        suggestedAction: hypothesis.affectedCode.length > 0 ? 'experiment' : 'add affected code',
+        branches: Object.keys(session.branches),
+        thoughtHistoryLength: session.thoughtHistory.length
+      });
+    }
 
     // Update search index
     this.searchIndex.removeSession(this.currentSessionId);
     this.searchIndex.addSession(this.currentSessionId, session);
 
     return createJsonResponse({
-      stepId: step.id,
-      recorded: true,
-      hypothesis: hypothesis.cause,
-      confidence: hypothesis.confidence
+      thoughtNumber: params.thoughtNumber,
+      totalThoughts: params.totalThoughts,
+      nextThoughtNeeded: true,
+      branches: Object.keys(session.branches),
+      thoughtHistoryLength: session.thoughtHistory.length
     });
   }
 

@@ -8,7 +8,7 @@ dist/
 *.tsbuildinfo
 
 # Debug data
-.debug-iteration-mcp/
+.debug-thinking-mcp/
 
 # Environment files
 .env

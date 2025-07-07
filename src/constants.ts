@@ -1,5 +1,5 @@
 // File paths
-export const DATA_DIR_NAME = '.debug-iteration-mcp';
+export const DATA_DIR_NAME = '.debug-thinking-mcp';
 export const METADATA_FILE = 'metadata.json';
 
 // JSONL file paths
@@ -44,8 +44,8 @@ export const ERROR_MESSAGES = {
 };
 
 // Tool metadata
-export const TOOL_NAME = 'debug_iteration';
-export const SERVER_NAME = 'debug-iteration-server';
+export const TOOL_NAME = 'debug_thinking';
+export const SERVER_NAME = 'debug-thinking-server';
 export const SERVER_VERSION = '0.2.0';
 
 // Actions

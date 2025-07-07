@@ -1,13 +1,14 @@
-# MCP Server Debug Iteration
+# MCP Server Debug Thinking
 
-[![npm version](https://img.shields.io/npm/v/mcp-server-debug-iteration.svg)](https://www.npmjs.com/package/mcp-server-debug-iteration)
+[![npm version](https://img.shields.io/npm/v/mcp-server-debug-thinking.svg)](https://www.npmjs.com/package/mcp-server-debug-thinking)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/node/v/mcp-server-debug-iteration.svg)](https://nodejs.org)
+[![Node.js Version](https://img.shields.io/node/v/mcp-server-debug-thinking.svg)](https://nodejs.org)
 
-A streamlined Model Context Protocol (MCP) server for systematic debugging with integrated sequential thinking support and intelligent pattern learning.
+A streamlined Model Context Protocol (MCP) server for systematic debugging with built-in sequential thinking process and intelligent pattern learning.
 
 ## 🚀 Features
 
+- **🤔 Sequential Thinking**: Built-in step-by-step thought process with revision and branching support
 - **🔍 Structured Debugging**: Track problems, hypotheses, experiments, and results in a systematic way
 - **🧠 Pattern Learning**: Automatically recognize and learn from error patterns across sessions
 - **📊 Session Management**: Organize debugging work into trackable sessions with summaries
@@ -20,14 +21,14 @@ A streamlined Model Context Protocol (MCP) server for systematic debugging with 
 ### Via npm (Recommended)
 
 ```bash
-npm install -g mcp-server-debug-iteration
+npm install -g mcp-server-debug-thinking
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/mcp-server-debug-iteration.git
-cd mcp-server-debug-iteration
+git clone https://github.com/yourusername/mcp-server-debug-thinking.git
+cd mcp-server-debug-thinking
 npm install
 npm run build
 ```
@@ -44,9 +45,9 @@ Add to your Claude Desktop configuration:
 ```json
 {
   "mcpServers": {
-    "debug-iteration": {
+    "debug-thinking": {
       "command": "npx",
-      "args": ["mcp-server-debug-iteration"],
+      "args": ["mcp-server-debug-thinking"],
       "env": {
         "DISABLE_DEBUG_LOGGING": "false"
       }
@@ -55,6 +56,30 @@ Add to your Claude Desktop configuration:
 }
 ```
 
+### Using with Claude Code (claude.ai/code)
+
+1. **Install globally** (after npm publish):
+   ```bash
+   npm install -g mcp-server-debug-thinking
+   ```
+
+2. **Or install from source**:
+   ```bash
+   git clone https://github.com/yourusername/mcp-server-debug-thinking.git
+   cd mcp-server-debug-thinking
+   npm install
+   npm run build
+   npm link  # Makes it available globally
+   ```
+
+3. **Configure Claude Desktop** using the configuration above
+
+4. **Restart Claude Desktop** to load the MCP server
+
+5. **Use in Claude Code**:
+   - The `debug_thinking` tool will be available automatically
+   - Start debugging with: "Use debug_thinking to help me debug..."
+
 ### VS Code Integration
 
 For VS Code with the MCP extension, add to your workspace settings:
@@ -62,9 +87,9 @@ For VS Code with the MCP extension, add to your workspace settings:
 ```json
 {
   "mcp.servers": {
-    "debug-iteration": {
+    "debug-thinking": {
       "command": "npx",
-      "args": ["mcp-server-debug-iteration"]
+      "args": ["mcp-server-debug-thinking"]
     }
   }
 }
@@ -72,7 +97,7 @@ For VS Code with the MCP extension, add to your workspace settings:
 
 ## 📖 Usage
 
-The server provides a single, streamlined tool called `debug_iteration` with intuitive actions.
+The server provides a single, streamlined tool called `debug_thinking` with intuitive actions.
 
 ### Simple Workflow
 
@@ -80,7 +105,7 @@ The server provides a single, streamlined tool called `debug_iteration` with int
 
 ```typescript
 // Simple start
-await use_tool("debug_iteration", { 
+await use_tool("debug_thinking", { 
   action: "start",
   problem: "API endpoint returns 500 error",
   context: {
@@ -91,31 +116,41 @@ await use_tool("debug_iteration", {
 });
 ```
 
-#### 2. Think (Integrates with sequential-thinking)
+#### 2. Think (Sequential Thinking Style)
 
 ```typescript
-// Record a single thought
-await use_tool("debug_iteration", {
+// First thought
+await use_tool("debug_thinking", {
   action: "think",
   thought: "The error suggests the response object structure differs from expected",
-  confidence: 75
+  thoughtNumber: 1,
+  totalThoughts: 3,
+  nextThoughtNeeded: true
 });
 
-// Or multiple thoughts at once
-await use_tool("debug_iteration", {
+// Second thought
+await use_tool("debug_thinking", {
   action: "think", 
-  thought: [
-    "Response might be null or undefined",
-    "Need to add defensive programming",
-    "Should use optional chaining"
-  ]
+  thought: "Response might be null or undefined",
+  thoughtNumber: 2,
+  totalThoughts: 3,
+  nextThoughtNeeded: true
+});
+
+// Final thought - hypothesis will be auto-generated
+await use_tool("debug_thinking", {
+  action: "think",
+  thought: "Should use optional chaining to handle undefined",
+  thoughtNumber: 3,
+  totalThoughts: 3,
+  nextThoughtNeeded: false
 });
 ```
 
 #### 3. Experiment
 
 ```typescript
-await use_tool("debug_iteration", {
+await use_tool("debug_thinking", {
   action: "experiment",
   description: "Add optional chaining to safely access nested properties",
   changes: [{
@@ -130,7 +165,7 @@ await use_tool("debug_iteration", {
 #### 4. Observe Results
 
 ```typescript
-await use_tool("debug_iteration", {
+await use_tool("debug_thinking", {
   action: "observe",
   success: true,
   output: "All tests passed",
@@ -142,7 +177,7 @@ await use_tool("debug_iteration", {
 #### 5. Search for Similar Issues
 
 ```typescript
-await use_tool("debug_iteration", {
+await use_tool("debug_thinking", {
   action: "search",
   query: "TypeError undefined property access",
   filters: {
@@ -156,32 +191,44 @@ await use_tool("debug_iteration", {
 
 ```typescript
 // End without summary
-await use_tool("debug_iteration", { action: "end" });
+await use_tool("debug_thinking", { action: "end" });
 
 // End with summary
-await use_tool("debug_iteration", { 
+await use_tool("debug_thinking", { 
   action: "end",
   summary: true
 });
 ```
 
-### Sequential Thinking Integration
+### Advanced Thinking Features
 
-This tool works seamlessly with the sequential-thinking MCP server:
+#### Revising Thoughts
 
 ```typescript
-// Use sequential-thinking to analyze the problem
-const thinking = await sequential_thinking({
-  thought: "This TypeError suggests a null reference issue...",
-  thoughtNumber: 1,
-  totalThoughts: 3
-});
-
-// Feed the thinking directly into debug_iteration
-await use_tool("debug_iteration", {
+// Revise a previous thought
+await use_tool("debug_thinking", {
   action: "think",
-  thought: thinking.thought,
-  confidence: 85
+  thought: "Actually, the issue might be with async data loading timing",
+  thoughtNumber: 4,
+  totalThoughts: 5,
+  nextThoughtNeeded: true,
+  isRevision: true,
+  revisesThought: 2
+});
+```
+
+#### Branching Thoughts
+
+```typescript
+// Explore alternative reasoning
+await use_tool("debug_thinking", {
+  action: "think",
+  thought: "Alternative theory: race condition in state updates",
+  thoughtNumber: 1,
+  totalThoughts: 2,
+  nextThoughtNeeded: true,
+  branchFromThought: 2,
+  branchId: "race-condition-theory"
 });
 ```
 
@@ -190,7 +237,7 @@ await use_tool("debug_iteration", {
 All data is stored in `.debug-iteration-mcp/` using efficient JSONL format:
 
 ```plaintext
-.debug-iteration-mcp/
+.debug-thinking-mcp/
 ├── sessions.jsonl           # All debugging sessions
 ├── error-patterns.jsonl     # Learned error patterns
 ├── successful-fixes.jsonl   # Working solutions
@@ -201,20 +248,31 @@ All data is stored in `.debug-iteration-mcp/` using efficient JSONL format:
 
 ```typescript
 // 1. Start debugging
-await use_tool("debug_iteration", {
+await use_tool("debug_thinking", {
   action: "start",
   problem: "User profile page crashes",
   context: { error: "TypeError: Cannot read property 'name' of undefined" }
 });
 
-// 2. Think about the problem
-await use_tool("debug_iteration", {
+// 2. Think step-by-step about the problem
+await use_tool("debug_thinking", {
   action: "think",
-  thought: "User data might not be loaded before render"
+  thought: "User data might not be loaded before render",
+  thoughtNumber: 1,
+  totalThoughts: 2,
+  nextThoughtNeeded: true
+});
+
+await use_tool("debug_thinking", {
+  action: "think",
+  thought: "Need to add loading state and null checks",
+  thoughtNumber: 2,
+  totalThoughts: 2,
+  nextThoughtNeeded: false  // This generates hypothesis
 });
 
 // 3. Plan an experiment
-await use_tool("debug_iteration", {
+await use_tool("debug_thinking", {
   action: "experiment",
   description: "Add loading state and null checks",
   changes: [{
@@ -226,7 +284,7 @@ await use_tool("debug_iteration", {
 });
 
 // 4. Test and observe
-await use_tool("debug_iteration", {
+await use_tool("debug_thinking", {
   action: "observe",
   success: true,
   learning: "Always validate data before rendering",
@@ -234,13 +292,13 @@ await use_tool("debug_iteration", {
 });
 
 // 5. Search for similar issues
-await use_tool("debug_iteration", {
+await use_tool("debug_thinking", {
   action: "search",
   query: "null reference TypeError"
 });
 
 // 6. End with summary
-await use_tool("debug_iteration", {
+await use_tool("debug_thinking", {
   action: "end",
   summary: true
 });
@@ -270,7 +328,7 @@ npm run format
 ### Environment Variables
 
 - `DISABLE_DEBUG_LOGGING` - Set to `"true"` to disable console output (default: `"false"`)
-- `DEBUG_DATA_DIR` - Custom directory for debug data (default: `./.debug-iteration-mcp`)
+- `DEBUG_DATA_DIR` - Custom directory for debug data (default: `./.debug-thinking-mcp`)
 
 ## 🤝 Contributing
 

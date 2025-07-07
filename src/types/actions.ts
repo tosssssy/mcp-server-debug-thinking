@@ -11,8 +11,15 @@ export interface StartParams {
 }
 
 export interface ThinkParams {
-  thought: string | string[];
-  confidence?: number;
+  thought: string;
+  nextThoughtNeeded: boolean;
+  thoughtNumber: number;
+  totalThoughts: number;
+  isRevision?: boolean;
+  revisesThought?: number;
+  branchFromThought?: number;
+  branchId?: string;
+  needsMoreThoughts?: boolean;
 }
 
 export interface ExperimentParams {

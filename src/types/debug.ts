@@ -80,4 +80,7 @@ export interface DebugSession {
     framework?: string;
     tags?: string[];
   };
+  thoughtHistory: ThinkingStep[];
+  branches: Record<string, ThinkingStep[]>;
+  currentBranch?: string;
 }

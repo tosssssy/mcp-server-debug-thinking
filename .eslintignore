@@ -16,7 +16,7 @@ coverage/
 .nyc_output/
 
 # Debug data
-.debug-iteration-mcp/
+.debug-thinking-mcp/
 
 # Config files
 *.config.js

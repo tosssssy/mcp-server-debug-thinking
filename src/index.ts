@@ -26,25 +26,26 @@ import {
   ERROR_MESSAGES
 } from './constants.js';
 
-const DEBUG_ITERATION_TOOL: Tool = {
+const DEBUG_THINKING_TOOL: Tool = {
   name: TOOL_NAME,
-  description: `Systematic debugging and iteration tracker with pattern learning.
+  description: `Systematic debugging with thinking process tracking and pattern learning.
 
-This tool provides a streamlined workflow for debugging:
+This tool provides a streamlined workflow for debugging with sequential thinking:
 1. start - Begin a debugging session
-2. think - Record thoughts and automatically generate hypothesis
+2. think - Record step-by-step thoughts (Sequential Thinking style)
 3. experiment - Define what changes to test
 4. observe - Record results and learnings
 5. search - Find similar past issues and solutions
 6. end - Complete the session
 
 Features:
-- Integrates with sequential-thinking MCP
+- Built-in sequential thinking process
+- Supports thought revision and branching
+- Automatically generates hypothesis when thinking completes
 - Learns from past debugging sessions
-- Simple, intuitive action flow
 - Pattern recognition and search
 
-Data persists in ~/.debug-iteration-mcp/`,
+Data persists in ~/.debug-thinking-mcp/`,
   inputSchema: {
     type: "object",
     properties: {
@@ -68,19 +69,46 @@ Data persists in ~/.debug-iteration-mcp/`,
           tags: { type: "array", items: { type: "string" } },
         },
       },
-      // Think action
+      // Think action - Sequential Thinking style
       thought: {
-        oneOf: [
-          { type: "string" },
-          { type: "array", items: { type: "string" } }
-        ],
-        description: "Thought(s) to record (for think action)",
+        type: "string",
+        description: "Current thinking step (for think action)",
       },
-      confidence: {
+      nextThoughtNeeded: {
+        type: "boolean",
+        description: "Whether another thought step is needed (for think action)",
+      },
+      thoughtNumber: {
         type: "integer",
-        minimum: 0,
-        maximum: 100,
-        description: "Confidence level (for think action)",
+        minimum: 1,
+        description: "Current thought number (for think action)",
+      },
+      totalThoughts: {
+        type: "integer",
+        minimum: 1,
+        description: "Estimated total thoughts needed (for think action)",
+      },
+      isRevision: {
+        type: "boolean",
+        description: "Whether this revises previous thinking (for think action)",
+      },
+      revisesThought: {
+        type: "integer",
+        minimum: 1,
+        description: "Which thought is being reconsidered (for think action)",
+      },
+      branchFromThought: {
+        type: "integer",
+        minimum: 1,
+        description: "Branching point thought number (for think action)",
+      },
+      branchId: {
+        type: "string",
+        description: "Branch identifier (for think action)",
+      },
+      needsMoreThoughts: {
+        type: "boolean",
+        description: "If more thoughts are needed (for think action)",
       },
       // Experiment action
       description: {
@@ -163,7 +191,7 @@ const server = new Server(
 const debugServer = new DebugServer();
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [DEBUG_ITERATION_TOOL],
+  tools: [DEBUG_THINKING_TOOL],
 }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -180,8 +208,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case ACTIONS.THINK:
         return debugServer.think({
-          thought: args.thought as string | string[],
-          confidence: args.confidence as number
+          thought: args.thought as string,
+          nextThoughtNeeded: args.nextThoughtNeeded as boolean,
+          thoughtNumber: args.thoughtNumber as number,
+          totalThoughts: args.totalThoughts as number,
+          isRevision: args.isRevision as boolean,
+          revisesThought: args.revisesThought as number,
+          branchFromThought: args.branchFromThought as number,
+          branchId: args.branchId as string,
+          needsMoreThoughts: args.needsMoreThoughts as boolean
         });
 
       case ACTIONS.EXPERIMENT:
@@ -227,7 +262,7 @@ async function runServer() {
   
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info("Code Debug & Iteration MCP Server running on stdio");
+  logger.info("Code Debug & Thinking MCP Server running on stdio");
 
   // Handle graceful shutdown
   process.on("SIGINT", async () => {
