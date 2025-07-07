@@ -1,5 +1,6 @@
 import path from 'path';
 import os from 'os';
+import fs from 'fs/promises';
 import { Node, Edge, DebugGraph } from '../types/graph.js';
 import { 
   ensureDirectory, 
@@ -99,16 +100,21 @@ export class GraphStorage {
         lastModified: new Date(),
         sessionCount: 0
       };
+      let roots: string[] = [];
 
       if (hasMetadata) {
-        const loadedMetadata = await readJsonLines<any>(this.metadataFile);
-        if (loadedMetadata.length > 0) {
-          const meta = loadedMetadata[0];
+        try {
+          const content = await fs.readFile(this.metadataFile, 'utf-8');
+          const meta = JSON.parse(content);
           metadata = {
             ...meta,
             createdAt: new Date(meta.createdAt),
             lastModified: new Date(meta.lastModified)
           };
+          // Load roots from metadata
+          roots = meta.roots || [];
+        } catch (error) {
+          logger.error('Failed to load metadata:', error);
         }
       }
 
@@ -116,7 +122,7 @@ export class GraphStorage {
       const graph: DebugGraph = {
         nodes: new Map(),
         edges: new Map(),
-        roots: metadata.roots || [],
+        roots,
         metadata
       };
 

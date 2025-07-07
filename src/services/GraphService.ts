@@ -218,6 +218,15 @@ export class GraphService {
         case 'related-nodes':
           results = await this.findRelatedNodes(action.parameters?.nodeId);
           break;
+        case 'failed-hypotheses':
+          results = await this.findFailedHypotheses(action.parameters);
+          break;
+        case 'solution-candidates':
+          results = await this.findSolutionCandidates(action.parameters);
+          break;
+        case 'pattern-match':
+          results = await this.findPatternMatches(action.parameters);
+          break;
         default:
           return createJsonResponse({
             success: false,
@@ -494,6 +503,95 @@ export class GraphService {
     }
     
     return Array.from(related).map(id => this.graph.nodes.get(id)).filter(Boolean);
+  }
+
+  private async findFailedHypotheses(params: any): Promise<any> {
+    const failedHypotheses = [];
+    
+    for (const node of this.graph.nodes.values()) {
+      if (node.type === 'hypothesis') {
+        const hypothesis = node as HypothesisNode;
+        // Consider a hypothesis failed if confidence is low or no successful experiments
+        if (hypothesis.metadata.confidence && hypothesis.metadata.confidence < 50) {
+          failedHypotheses.push({
+            node: hypothesis,
+            reason: 'Low confidence',
+            confidence: hypothesis.metadata.confidence
+          });
+        }
+      }
+    }
+    
+    return { hypotheses: failedHypotheses };
+  }
+
+  private async findSolutionCandidates(params: any): Promise<any> {
+    const nodeId = params?.nodeId;
+    if (!nodeId) return { candidates: [] };
+    
+    const problemNode = this.graph.nodes.get(nodeId);
+    if (!problemNode || problemNode.type !== 'problem') {
+      return { candidates: [] };
+    }
+    
+    // Find existing solutions that might apply
+    const candidates = [];
+    for (const node of this.graph.nodes.values()) {
+      if (node.type === 'solution') {
+        // Calculate relevance based on content similarity
+        const similarity = this.calculateSimilarity(problemNode.content, node.content);
+        if (similarity > 0.3) {
+          candidates.push({
+            solution: node,
+            relevance: similarity,
+            verified: (node as SolutionNode).metadata.verified
+          });
+        }
+      }
+    }
+    
+    return { 
+      candidates: candidates.sort((a, b) => b.relevance - a.relevance),
+      problemId: nodeId 
+    };
+  }
+
+  private async findPatternMatches(params: any): Promise<any> {
+    const pattern = params?.pattern;
+    const nodeTypes = params?.nodeTypes;
+    
+    if (!pattern) return { matches: [] };
+    
+    const matches = [];
+    const regex = new RegExp(pattern, 'i');
+    
+    for (const node of this.graph.nodes.values()) {
+      // Filter by node type if specified
+      if (nodeTypes && !nodeTypes.includes(node.type)) {
+        continue;
+      }
+      
+      // Check if content matches pattern
+      if (regex.test(node.content)) {
+        matches.push({
+          node,
+          matchType: 'content',
+          relevance: 1.0
+        });
+      } else if (node.metadata.tags?.some(tag => regex.test(tag))) {
+        matches.push({
+          node,
+          matchType: 'tag',
+          relevance: 0.8
+        });
+      }
+    }
+    
+    return { 
+      matches,
+      pattern,
+      totalMatches: matches.length 
+    };
   }
 
   // Public methods for session management
