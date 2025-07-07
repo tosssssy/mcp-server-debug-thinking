@@ -4,17 +4,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/node/v/mcp-server-debug-thinking.svg)](https://nodejs.org)
 
-A streamlined Model Context Protocol (MCP) server for systematic debugging with built-in sequential thinking process and intelligent pattern learning.
+A graph-based Model Context Protocol (MCP) server for systematic debugging using Problem-Solution Trees and Hypothesis-Experiment-Learning cycles.
 
 ## 🚀 Features
 
-- **🤔 Sequential Thinking**: Built-in step-by-step thought process with revision and branching support
-- **🔍 Structured Debugging**: Track problems, hypotheses, experiments, and results in a systematic way
-- **🧠 Pattern Learning**: Automatically recognize and learn from error patterns across sessions
-- **📊 Session Management**: Organize debugging work into trackable sessions with summaries
-- **💾 Persistent Storage**: Save debugging history and learned patterns for future reference
-- **🎨 Visual Feedback**: Beautiful, colorful console output for debugging steps
-- **🔄 Iterative Workflow**: Support for iteration, pivoting, and research-based debugging approaches
+- **🌳 Problem-Solution Trees**: Decompose complex problems hierarchically
+- **🔬 H-E-L Cycles**: Hypothesis → Experiment → Learning methodology
+- **🧠 Knowledge Graph**: Build reusable debugging knowledge over time
+- **🔍 Pattern Recognition**: Automatically identify successful debugging patterns
+- **💡 Learning Extraction**: Capture and reuse insights from every session
+- **📊 Graph Analysis**: Query similar problems, successful patterns, and solutions
+- **💾 Persistent Storage**: All debugging knowledge is saved and searchable
 
 ## 📦 Installation
 
@@ -47,266 +47,226 @@ Add to your Claude Desktop configuration:
   "mcpServers": {
     "debug-thinking": {
       "command": "npx",
-      "args": ["mcp-server-debug-thinking"],
-      "env": {
-        "DISABLE_DEBUG_LOGGING": "false"
-      }
-    }
-  }
-}
-```
-
-### Using with Claude Code (claude.ai/code)
-
-1. **Install globally** (after npm publish):
-   ```bash
-   npm install -g mcp-server-debug-thinking
-   ```
-
-2. **Or install from source**:
-   ```bash
-   git clone https://github.com/yourusername/mcp-server-debug-thinking.git
-   cd mcp-server-debug-thinking
-   npm install
-   npm run build
-   npm link  # Makes it available globally
-   ```
-
-3. **Configure Claude Desktop** using the configuration above
-
-4. **Restart Claude Desktop** to load the MCP server
-
-5. **Use in Claude Code**:
-   - The `debug_thinking` tool will be available automatically
-   - Start debugging with: "Use debug_thinking to help me debug..."
-
-### VS Code Integration
-
-For VS Code with the MCP extension, add to your workspace settings:
-
-```json
-{
-  "mcp.servers": {
-    "debug-thinking": {
-      "command": "npx",
       "args": ["mcp-server-debug-thinking"]
     }
   }
 }
 ```
 
-## 📖 Usage
+## 📖 Core Concepts
 
-The server provides a single, streamlined tool called `debug_thinking` with intuitive actions.
+This tool models debugging as a **knowledge graph** where:
 
-### Simple Workflow
+### Nodes
+- **Problem**: Issues to be solved
+- **Hypothesis**: Theories about causes
+- **Experiment**: Tests to validate hypotheses
+- **Observation**: Results from experiments
+- **Learning**: Insights gained
+- **Solution**: Verified fixes
 
-#### 1. Start a Session
+### Edges (Relationships)
+- `decomposes`: Problem → SubProblem
+- `hypothesizes`: Problem → Hypothesis
+- `tests`: Hypothesis → Experiment
+- `produces`: Experiment → Observation
+- `learns`: Observation → Learning
+- `contradicts`/`supports`: Evidence ↔ Hypothesis
+- `solves`: Solution → Problem
+
+## 🎯 Three Simple Actions
+
+### 1. CREATE - Add nodes to the graph
 
 ```typescript
-// Simple start
-await use_tool("debug_thinking", { 
-  action: "start",
-  problem: "API endpoint returns 500 error",
-  context: {
-    error: "TypeError: Cannot read property 'data' of undefined",
-    language: "typescript",
-    framework: "express"
+{
+  action: "create",
+  nodeType: "problem" | "hypothesis" | "experiment" | "observation" | "learning" | "solution",
+  content: "Description of the node",
+  parentId?: "parent-node-id",  // Auto-creates appropriate relationship
+  metadata?: {
+    confidence?: 75,
+    tags?: ["react", "performance"]
+  }
+}
+```
+
+### 2. CONNECT - Create relationships
+
+```typescript
+{
+  action: "connect",
+  from: "source-node-id",
+  to: "target-node-id",
+  type: "supports" | "contradicts" | "learns" | ...,
+  strength?: 0.8,
+  metadata?: {
+    reasoning: "Based on test results..."
+  }
+}
+```
+
+### 3. QUERY - Search and analyze
+
+```typescript
+{
+  action: "query",
+  queryType: "similar-problems" | "successful-patterns" | "learning-path" | ...,
+  parameters: {
+    pattern?: "search text",
+    nodeId?: "reference-node",
+    confidence?: 70,
+    limit?: 10
+  }
+}
+```
+
+## 💡 Usage Examples
+
+### Basic Debugging Workflow
+
+```typescript
+// 1. Define the problem
+await use_tool("debug_thinking", {
+  action: "create",
+  nodeType: "problem",
+  content: "App crashes on startup with TypeError"
+});
+
+// 2. Create hypothesis (auto-creates 'hypothesizes' edge)
+await use_tool("debug_thinking", {
+  action: "create",
+  nodeType: "hypothesis",
+  content: "Missing null check in user data",
+  parentId: "problem-id",
+  metadata: { confidence: 80 }
+});
+
+// 3. Design experiment (auto-creates 'tests' edge)
+await use_tool("debug_thinking", {
+  action: "create",
+  nodeType: "experiment",
+  content: "Add optional chaining to user.name access",
+  parentId: "hypothesis-id"
+});
+
+// 4. Record observation (auto-creates 'produces' edge)
+await use_tool("debug_thinking", {
+  action: "create",
+  nodeType: "observation",
+  content: "Error resolved, app loads successfully",
+  parentId: "experiment-id"
+});
+
+// 5. Extract learning
+await use_tool("debug_thinking", {
+  action: "create",
+  nodeType: "learning",
+  content: "Always validate external data before use"
+});
+
+// 6. Connect observation to learning
+await use_tool("debug_thinking", {
+  action: "connect",
+  from: "observation-id",
+  to: "learning-id",
+  type: "learns"
+});
+```
+
+### Advanced Queries
+
+```typescript
+// Find similar problems
+await use_tool("debug_thinking", {
+  action: "query",
+  queryType: "similar-problems",
+  parameters: {
+    pattern: "TypeError null reference",
+    limit: 5
+  }
+});
+
+// Find successful patterns
+await use_tool("debug_thinking", {
+  action: "query",
+  queryType: "successful-patterns",
+  parameters: {
+    tags: ["react", "state-management"]
+  }
+});
+
+// Trace learning path
+await use_tool("debug_thinking", {
+  action: "query",
+  queryType: "learning-path",
+  parameters: {
+    nodeId: "problem-id"
+  }
+});
+
+// Visualize subgraph
+await use_tool("debug_thinking", {
+  action: "query",
+  queryType: "graph-visualization",
+  parameters: {
+    nodeId: "root-problem-id",
+    depth: 3
   }
 });
 ```
 
-#### 2. Think (Sequential Thinking Style)
+### Complex Problem Decomposition
 
 ```typescript
-// First thought
+// Root problem
+const rootProblem = await use_tool("debug_thinking", {
+  action: "create",
+  nodeType: "problem",
+  content: "Application performance degrades over time"
+});
+
+// Decompose into sub-problems
 await use_tool("debug_thinking", {
-  action: "think",
-  thought: "The error suggests the response object structure differs from expected",
-  thoughtNumber: 1,
-  totalThoughts: 3,
-  nextThoughtNeeded: true
+  action: "create",
+  nodeType: "problem",
+  content: "Memory usage increases continuously",
+  parentId: rootProblem.nodeId
 });
 
-// Second thought
 await use_tool("debug_thinking", {
-  action: "think", 
-  thought: "Response might be null or undefined",
-  thoughtNumber: 2,
-  totalThoughts: 3,
-  nextThoughtNeeded: true
+  action: "create",
+  nodeType: "problem",
+  content: "API response times growing",
+  parentId: rootProblem.nodeId
 });
 
-// Final thought - hypothesis will be auto-generated
-await use_tool("debug_thinking", {
-  action: "think",
-  thought: "Should use optional chaining to handle undefined",
-  thoughtNumber: 3,
-  totalThoughts: 3,
-  nextThoughtNeeded: false
-});
-```
-
-#### 3. Experiment
-
-```typescript
-await use_tool("debug_thinking", {
-  action: "experiment",
-  description: "Add optional chaining to safely access nested properties",
-  changes: [{
-    file: "src/api/users.js",
-    change: "return response?.data?.user || null;",
-    reason: "Prevent accessing properties of undefined"
-  }],
-  expected: "Tests pass and endpoint returns null for missing data"
-});
-```
-
-#### 4. Observe Results
-
-```typescript
-await use_tool("debug_thinking", {
-  action: "observe",
-  success: true,
-  output: "All tests passed",
-  learning: "API responses need defensive programming for missing data",
-  next: "fixed"  // or "iterate" or "pivot"
-});
-```
-
-#### 5. Search for Similar Issues
-
-```typescript
-await use_tool("debug_thinking", {
-  action: "search",
-  query: "TypeError undefined property access",
-  filters: {
-    confidence: 70,
-    language: "typescript"
-  }
-});
-```
-
-#### 6. End Session
-
-```typescript
-// End without summary
-await use_tool("debug_thinking", { action: "end" });
-
-// End with summary
-await use_tool("debug_thinking", { 
-  action: "end",
-  summary: true
-});
-```
-
-### Advanced Thinking Features
-
-#### Revising Thoughts
-
-```typescript
-// Revise a previous thought
-await use_tool("debug_thinking", {
-  action: "think",
-  thought: "Actually, the issue might be with async data loading timing",
-  thoughtNumber: 4,
-  totalThoughts: 5,
-  nextThoughtNeeded: true,
-  isRevision: true,
-  revisesThought: 2
-});
-```
-
-#### Branching Thoughts
-
-```typescript
-// Explore alternative reasoning
-await use_tool("debug_thinking", {
-  action: "think",
-  thought: "Alternative theory: race condition in state updates",
-  thoughtNumber: 1,
-  totalThoughts: 2,
-  nextThoughtNeeded: true,
-  branchFromThought: 2,
-  branchId: "race-condition-theory"
-});
+// Continue decomposition and investigation...
 ```
 
 ## 📁 Data Storage
 
-All data is stored in `.debug-iteration-mcp/` using efficient JSONL format:
+All graph data is persisted in `~/.debug-thinking-mcp/`:
 
-```plaintext
-.debug-thinking-mcp/
-├── sessions.jsonl           # All debugging sessions
-├── error-patterns.jsonl     # Learned error patterns
-├── successful-fixes.jsonl   # Working solutions
-└── metadata.json           # Statistics
+```
+~/.debug-thinking-mcp/
+├── nodes.jsonl          # All nodes in JSONL format
+├── edges.jsonl          # All relationships
+└── graph-metadata.json  # Graph statistics
 ```
 
-## 🧪 Complete Example
+## 🔍 Query Types
 
-```typescript
-// 1. Start debugging
-await use_tool("debug_thinking", {
-  action: "start",
-  problem: "User profile page crashes",
-  context: { error: "TypeError: Cannot read property 'name' of undefined" }
-});
-
-// 2. Think step-by-step about the problem
-await use_tool("debug_thinking", {
-  action: "think",
-  thought: "User data might not be loaded before render",
-  thoughtNumber: 1,
-  totalThoughts: 2,
-  nextThoughtNeeded: true
-});
-
-await use_tool("debug_thinking", {
-  action: "think",
-  thought: "Need to add loading state and null checks",
-  thoughtNumber: 2,
-  totalThoughts: 2,
-  nextThoughtNeeded: false  // This generates hypothesis
-});
-
-// 3. Plan an experiment
-await use_tool("debug_thinking", {
-  action: "experiment",
-  description: "Add loading state and null checks",
-  changes: [{
-    file: "UserProfile.js",
-    change: "if (!user) return <Loading />",
-    reason: "Prevent rendering before data loads"
-  }],
-  expected: "Page shows loading state instead of crashing"
-});
-
-// 4. Test and observe
-await use_tool("debug_thinking", {
-  action: "observe",
-  success: true,
-  learning: "Always validate data before rendering",
-  next: "fixed"
-});
-
-// 5. Search for similar issues
-await use_tool("debug_thinking", {
-  action: "search",
-  query: "null reference TypeError"
-});
-
-// 6. End with summary
-await use_tool("debug_thinking", {
-  action: "end",
-  summary: true
-});
-```
+- **similar-problems**: Find problems similar to a given pattern
+- **successful-patterns**: Identify patterns that led to solutions
+- **failed-hypotheses**: Learn from disproven theories
+- **learning-path**: Trace the path from problem to solution
+- **solution-candidates**: Find potential solutions for a problem
+- **graph-visualization**: Export graph in Mermaid/DOT format
+- **node-details**: Get comprehensive information about a node
+- **related-nodes**: Find all connected nodes
 
 ## 🛠️ Development
-
-### Building from Source
 
 ```bash
 # Install dependencies
@@ -318,31 +278,16 @@ npm run dev
 # Build for production
 npm run build
 
-# Lint code
+# Run linter
 npm run lint
 
 # Format code
 npm run format
 ```
 
-### Environment Variables
-
-- `DISABLE_DEBUG_LOGGING` - Set to `"true"` to disable console output (default: `"false"`)
-- `DEBUG_DATA_DIR` - Custom directory for debug data (default: `./.debug-thinking-mcp`)
-
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 🔒 Security
-
-For security issues, please see our [Security Policy](SECURITY.md).
 
 ## 📄 License
 
@@ -351,14 +296,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - Built on the [Model Context Protocol](https://modelcontextprotocol.io)
-- Inspired by systematic debugging methodologies
+- Inspired by Problem-Solution Trees and scientific debugging methods
 - Thanks to all contributors and users
-
-## 📞 Support
-
-- 📧 Email: [your.email@example.com](mailto:your.email@example.com)
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/mcp-server-debug-iteration/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/mcp-server-debug-iteration/discussions)
 
 ---
 

@@ -7,43 +7,46 @@ import {
   ListToolsRequestSchema,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-import { DebugServer } from './services/DebugServer.js';
+import { GraphService } from './services/GraphService.js';
 import { 
-  StartParams, 
-  ThinkParams, 
-  ExperimentParams, 
-  ObserveParams, 
-  SearchParams, 
-  EndParams 
-} from './types/actions.js';
+  ActionType,
+  CreateAction,
+  ConnectAction,
+  QueryAction,
+  GraphAction
+} from './types/graphActions.js';
 import { createJsonResponse } from './utils/format.js';
 import { logger } from './utils/logger.js';
 import {
   TOOL_NAME,
   SERVER_NAME,
   SERVER_VERSION,
-  ACTIONS,
   ERROR_MESSAGES
 } from './constants.js';
 
 const DEBUG_THINKING_TOOL: Tool = {
   name: TOOL_NAME,
-  description: `Systematic debugging with thinking process tracking and pattern learning.
+  description: `Graph-based debugging tool using Problem-Solution Trees and Hypothesis-Experiment-Learning cycles.
 
-This tool provides a streamlined workflow for debugging with sequential thinking:
-1. start - Begin a debugging session
-2. think - Record step-by-step thoughts (Sequential Thinking style)
-3. experiment - Define what changes to test
-4. observe - Record results and learnings
-5. search - Find similar past issues and solutions
-6. end - Complete the session
+This tool models debugging as a knowledge graph with three simple actions:
+
+1. CREATE - Create nodes (problem, hypothesis, experiment, observation, learning, solution)
+2. CONNECT - Create relationships between nodes
+3. QUERY - Search and analyze the debugging graph
+
+Workflow example:
+- CREATE problem "App crashes on startup"
+- CREATE hypothesis "Memory leak in event handlers" (auto-connects to problem)
+- CREATE experiment "Add cleanup in useEffect" (auto-connects to hypothesis)
+- CREATE observation "Memory usage stable" (auto-connects to experiment)
+- CREATE learning "Always cleanup React effects"
+- CONNECT observation to learning with 'learns' relationship
 
 Features:
-- Built-in sequential thinking process
-- Supports thought revision and branching
-- Automatically generates hypothesis when thinking completes
-- Learns from past debugging sessions
-- Pattern recognition and search
+- Automatic relationship creation based on parent-child context
+- Pattern recognition across debugging sessions
+- Knowledge accumulation and reuse
+- Graph visualization support
 
 Data persists in ~/.debug-thinking-mcp/`,
   inputSchema: {
@@ -51,124 +54,80 @@ Data persists in ~/.debug-thinking-mcp/`,
     properties: {
       action: {
         type: "string",
-        enum: Object.values(ACTIONS),
+        enum: ["create", "connect", "query"],
         description: "Action to perform",
       },
-      // Start action
-      problem: {
+      // CREATE action
+      nodeType: {
         type: "string",
-        description: "Problem description (for start action)",
+        enum: ["problem", "hypothesis", "experiment", "observation", "learning", "solution"],
+        description: "Type of node to create (for create action)",
       },
-      context: {
+      content: {
+        type: "string",
+        description: "Content of the node (for create action)",
+      },
+      parentId: {
+        type: "string",
+        description: "Parent node ID for automatic relationship creation (for create action)",
+      },
+      metadata: {
         type: "object",
-        description: "Additional context (for start action)",
+        description: "Additional metadata for the node (for create action)",
         properties: {
-          error: { type: "string" },
-          language: { type: "string" },
-          framework: { type: "string" },
+          confidence: { type: "number", minimum: 0, maximum: 100 },
           tags: { type: "array", items: { type: "string" } },
         },
       },
-      // Think action - Sequential Thinking style
-      thought: {
+      // CONNECT action
+      from: {
         type: "string",
-        description: "Current thinking step (for think action)",
+        description: "Source node ID (for connect action)",
       },
-      nextThoughtNeeded: {
-        type: "boolean",
-        description: "Whether another thought step is needed (for think action)",
-      },
-      thoughtNumber: {
-        type: "integer",
-        minimum: 1,
-        description: "Current thought number (for think action)",
-      },
-      totalThoughts: {
-        type: "integer",
-        minimum: 1,
-        description: "Estimated total thoughts needed (for think action)",
-      },
-      isRevision: {
-        type: "boolean",
-        description: "Whether this revises previous thinking (for think action)",
-      },
-      revisesThought: {
-        type: "integer",
-        minimum: 1,
-        description: "Which thought is being reconsidered (for think action)",
-      },
-      branchFromThought: {
-        type: "integer",
-        minimum: 1,
-        description: "Branching point thought number (for think action)",
-      },
-      branchId: {
+      to: {
         type: "string",
-        description: "Branch identifier (for think action)",
+        description: "Target node ID (for connect action)",
       },
-      needsMoreThoughts: {
-        type: "boolean",
-        description: "If more thoughts are needed (for think action)",
-      },
-      // Experiment action
-      description: {
+      type: {
         type: "string",
-        description: "Experiment description (for experiment action)",
+        enum: ["decomposes", "hypothesizes", "tests", "produces", "learns", "contradicts", "supports", "solves"],
+        description: "Type of relationship (for connect action)",
       },
-      changes: {
-        type: "array",
-        description: "Code changes to test (for experiment action)",
-        items: {
-          type: "object",
-          properties: {
-            file: { type: "string" },
-            change: { type: "string" },
-            reason: { type: "string" },
-          },
-          required: ["file", "change", "reason"],
-        },
+      strength: {
+        type: "number",
+        minimum: 0,
+        maximum: 1,
+        description: "Strength of the relationship (for connect action)",
       },
-      expected: {
+      // QUERY action
+      queryType: {
         type: "string",
-        description: "Expected outcome (for experiment action)",
+        enum: [
+          "similar-problems",
+          "successful-patterns",
+          "failed-hypotheses",
+          "learning-path",
+          "solution-candidates",
+          "graph-visualization",
+          "node-details",
+          "related-nodes",
+          "pattern-match"
+        ],
+        description: "Type of query to perform (for query action)",
       },
-      // Observe action
-      success: {
-        type: "boolean",
-        description: "Whether the experiment succeeded (for observe action)",
-      },
-      output: {
-        type: "string",
-        description: "Output from the experiment (for observe action)",
-      },
-      learning: {
-        type: "string",
-        description: "What was learned (for observe action)",
-      },
-      next: {
-        type: "string",
-        enum: ["fixed", "iterate", "pivot"],
-        description: "Next action to take (for observe action)",
-      },
-      // Search action
-      query: {
-        type: "string",
-        description: "Search query (for search action)",
-      },
-      filters: {
+      parameters: {
         type: "object",
-        description: "Search filters (for search action)",
+        description: "Query parameters (for query action)",
         properties: {
-          type: { type: "string", enum: ["error", "solution", "pattern"] },
-          confidence: { type: "integer", minimum: 0, maximum: 100 },
-          language: { type: "string" },
-          limit: { type: "integer", minimum: 1, maximum: 50 },
+          nodeId: { type: "string" },
+          pattern: { type: "string" },
+          nodeTypes: { type: "array", items: { type: "string" } },
+          edgeTypes: { type: "array", items: { type: "string" } },
+          confidence: { type: "number" },
+          limit: { type: "integer", minimum: 1, maximum: 100 },
+          depth: { type: "integer", minimum: 1, maximum: 10 },
+          tags: { type: "array", items: { type: "string" } },
         },
-      },
-      // End action
-      summary: {
-        type: "boolean",
-        description: "Whether to return a summary (for end action)",
       },
     },
     required: ["action"],
@@ -188,7 +147,7 @@ const server = new Server(
   },
 );
 
-const debugServer = new DebugServer();
+const graphService = new GraphService();
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [DEBUG_THINKING_TOOL],
@@ -197,56 +156,44 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === TOOL_NAME) {
     const args = request.params.arguments as Record<string, unknown>;
-    const action = args.action as string;
+    const action = args.action as ActionType;
+
+    let graphAction: GraphAction;
 
     switch (action) {
-      case ACTIONS.START:
-        return debugServer.start({
-          problem: args.problem as string,
-          context: args.context as any
-        });
+      case ActionType.CREATE:
+        graphAction = {
+          action: ActionType.CREATE,
+          nodeType: args.nodeType as any,
+          content: args.content as string,
+          parentId: args.parentId as string,
+          metadata: args.metadata as any
+        };
+        return await graphService.create(graphAction as CreateAction);
 
-      case ACTIONS.THINK:
-        return debugServer.think({
-          thought: args.thought as string,
-          nextThoughtNeeded: args.nextThoughtNeeded as boolean,
-          thoughtNumber: args.thoughtNumber as number,
-          totalThoughts: args.totalThoughts as number,
-          isRevision: args.isRevision as boolean,
-          revisesThought: args.revisesThought as number,
-          branchFromThought: args.branchFromThought as number,
-          branchId: args.branchId as string,
-          needsMoreThoughts: args.needsMoreThoughts as boolean
-        });
+      case ActionType.CONNECT:
+        graphAction = {
+          action: ActionType.CONNECT,
+          from: args.from as string,
+          to: args.to as string,
+          type: args.type as any,
+          strength: args.strength as number,
+          metadata: args.metadata as any
+        };
+        return await graphService.connect(graphAction as ConnectAction);
 
-      case ACTIONS.EXPERIMENT:
-        return debugServer.experiment({
-          description: args.description as string,
-          changes: args.changes as any[],
-          expected: args.expected as string
-        });
-
-      case ACTIONS.OBSERVE:
-        return await debugServer.observe({
-          success: args.success as boolean,
-          output: args.output as string,
-          learning: args.learning as string,
-          next: args.next as any
-        });
-
-      case ACTIONS.SEARCH:
-        return debugServer.search({
-          query: args.query as string,
-          filters: args.filters as any
-        });
-
-      case ACTIONS.END:
-        return await debugServer.end(args.summary as boolean);
+      case ActionType.QUERY:
+        graphAction = {
+          action: ActionType.QUERY,
+          type: args.queryType as any,
+          parameters: args.parameters as any
+        };
+        return await graphService.query(graphAction as QueryAction);
 
       default:
         return createJsonResponse({
-          error: `${ERROR_MESSAGES.UNKNOWN_ACTION}: ${action}`,
-          validActions: Object.values(ACTIONS),
+          error: `Unknown action: ${action}`,
+          validActions: Object.values(ActionType),
         }, true);
     }
   }
@@ -257,28 +204,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function runServer() {
-  // Initialize the debug server
-  await debugServer.initialize();
+  // Initialize the graph service
+  await graphService.initialize();
   
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info("Code Debug & Thinking MCP Server running on stdio");
+  logger.info("Graph-based Debug MCP Server running on stdio");
 
   // Handle graceful shutdown
   process.on("SIGINT", async () => {
-    logger.info("\n📁 Saving all data before shutdown...");
-
-    // End all active sessions
-    for (const sessionId of debugServer.getActiveSessionIds()) {
-      await debugServer.endSession(sessionId);
-    }
-
-    logger.success("✅ All data saved successfully");
+    logger.info("\n📁 Saving graph data before shutdown...");
+    await graphService.saveGraph();
+    logger.success("✅ Graph data saved successfully");
     process.exit(0);
   });
 
   process.on("SIGTERM", async () => {
-    await debugServer.saveAllKnowledge();
+    await graphService.saveGraph();
     process.exit(0);
   });
 }

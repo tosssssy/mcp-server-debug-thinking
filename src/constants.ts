@@ -45,17 +45,5 @@ export const ERROR_MESSAGES = {
 
 // Tool metadata
 export const TOOL_NAME = 'debug_thinking';
-export const SERVER_NAME = 'debug-thinking-server';
-export const SERVER_VERSION = '0.2.0';
-
-// Actions
-export const ACTIONS = {
-  START: 'start',
-  THINK: 'think',
-  EXPERIMENT: 'experiment',
-  OBSERVE: 'observe',
-  SEARCH: 'search',
-  END: 'end',
-} as const;
-
-export type ActionType = typeof ACTIONS[keyof typeof ACTIONS];
+export const SERVER_NAME = 'debug-thinking-mcp-server';
+export const SERVER_VERSION = '1.0.0';

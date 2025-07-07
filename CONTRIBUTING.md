@@ -1,6 +1,6 @@
-# Contributing to MCP Server Debug Iteration
+# Contributing to MCP Server Debug Thinking
 
-First off, thank you for considering contributing to MCP Server Debug Iteration! It's people like you that make this tool better for everyone.
+First off, thank you for considering contributing to MCP Server Debug Thinking! It's people like you that make this tool better for everyone.
 
 ## Code of Conduct
 
@@ -34,8 +34,8 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 
 Unsure where to begin contributing? You can start by looking through these `beginner` and `help-wanted` issues:
 
-- [Beginner issues](https://github.com/yourusername/mcp-server-debug-iteration/labels/beginner) - issues which should only require a few lines of code
-- [Help wanted issues](https://github.com/yourusername/mcp-server-debug-iteration/labels/help%20wanted) - issues which should be a bit more involved
+- [Beginner issues](https://github.com/yourusername/mcp-server-debug-thinking/labels/beginner) - issues which should only require a few lines of code
+- [Help wanted issues](https://github.com/yourusername/mcp-server-debug-thinking/labels/help%20wanted) - issues which should be a bit more involved
 
 ### Pull Requests
 
@@ -52,8 +52,8 @@ Unsure where to begin contributing? You can start by looking through these `begi
 
 1. Fork and clone the repository:
    ```bash
-   git clone https://github.com/your-username/mcp-server-debug-iteration.git
-   cd mcp-server-debug-iteration
+   git clone https://github.com/your-username/mcp-server-debug-thinking.git
+   cd mcp-server-debug-thinking
    ```
 
 2. Install dependencies:
@@ -123,15 +123,16 @@ Fixes #123
 ## Project Structure
 
 ```
-mcp-server-debug-iteration/
-├── src/                # Source files (if we restructure)
+mcp-server-debug-thinking/
+├── src/                # Source files
+│   ├── index.ts       # Main server implementation
+│   ├── types/         # TypeScript type definitions
+│   ├── services/      # Core services (GraphService, GraphStorage)
+│   └── utils/         # Utility functions
 ├── dist/               # Compiled JavaScript files
-├── tests/              # Test files
-├── docs/               # Documentation
 ├── .github/            # GitHub specific files
 │   ├── ISSUE_TEMPLATE/ # Issue templates
 │   └── workflows/      # GitHub Actions
-├── index.ts            # Main server implementation
 ├── package.json        # Project metadata and dependencies
 ├── tsconfig.json       # TypeScript configuration
 └── README.md           # Project documentation
@@ -141,7 +142,7 @@ mcp-server-debug-iteration/
 
 1. Update version in `package.json`
 2. Update `CHANGELOG.md`
-3. Create a git tag: `git tag -a v0.1.0 -m "Release version 0.1.0"`
+3. Create a git tag: `git tag -a v1.0.0 -m "Release version 1.0.0"`
 4. Push changes: `git push origin main --tags`
 5. GitHub Actions will automatically publish to npm
 
@@ -157,7 +158,7 @@ Contributors will be recognized in the following ways:
 
 Feel free to ask questions in:
 
-- [GitHub Discussions](https://github.com/yourusername/mcp-server-debug-iteration/discussions)
-- [GitHub Issues](https://github.com/yourusername/mcp-server-debug-iteration/issues)
+- [GitHub Discussions](https://github.com/yourusername/mcp-server-debug-thinking/discussions)
+- [GitHub Issues](https://github.com/yourusername/mcp-server-debug-thinking/issues)
 
 Thank you for contributing to make debugging better for everyone! 🎉

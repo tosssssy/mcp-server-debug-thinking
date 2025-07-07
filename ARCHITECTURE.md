@@ -6,12 +6,11 @@
 src/
 ├── index.ts              # Entry point and MCP server setup
 ├── types/
-│   ├── index.ts         # Type exports
-│   ├── debug.ts         # Debugging-related types
-│   └── search.ts        # Search-related types
+│   ├── graph.ts         # Graph structure types (Node, Edge, DebugGraph)
+│   └── graphActions.ts  # Action types (CREATE, CONNECT, QUERY)
 ├── services/
-│   ├── DebugServer.ts   # Main debugging server logic
-│   └── SearchIndex.ts   # Search indexing and querying
+│   ├── GraphService.ts  # Main graph operations service
+│   └── GraphStorage.ts  # Graph persistence layer
 ├── utils/
 │   ├── logger.ts        # Logging utilities
 │   ├── storage.ts       # File system operations
@@ -22,56 +21,93 @@ src/
 ## Key Components
 
 ### 1. Type System (`src/types/`)
-- **debug.ts**: Core debugging types (Problem, Hypothesis, Experiment, Result, etc.)
-- **search.ts**: Search-related types (SearchQuery, PatternMatch)
+
+- **graph.ts**: Core graph types
+  - `Node`: Base type for all debugging elements (problems, hypotheses, etc.)
+  - `Edge`: Relationships between nodes
+  - `DebugGraph`: Complete graph structure with metadata
+  - Specific node types: ProblemNode, HypothesisNode, ExperimentNode, ObservationNode, LearningNode, SolutionNode
+
+- **graphActions.ts**: Action-related types
+  - `CreateAction`: Parameters for node creation
+  - `ConnectAction`: Parameters for edge creation
+  - `QueryAction`: Parameters for graph queries
+  - Response types for each action
 
 ### 2. Services (`src/services/`)
-- **DebugServer**: Main service handling debugging sessions
-  - Session management
-  - Knowledge persistence
-  - Learning from results
-- **SearchIndex**: In-memory search index
-  - Text extraction and indexing
-  - Similarity scoring
-  - Filtering and ranking
+
+- **GraphService**: Core service managing the debugging knowledge graph
+  - Node and edge creation with automatic relationship inference
+  - Pattern recognition and similarity matching
+  - Query execution (similar problems, successful patterns, etc.)
+  - Suggestion generation based on graph analysis
+
+- **GraphStorage**: Persistence layer for graph data
+  - JSONL format for efficient storage and streaming
+  - Separate files for nodes, edges, and metadata
+  - Deduplication on load to handle multiple saves
 
 ### 3. Utilities (`src/utils/`)
-- **Logger**: Centralized logging with levels
-  - Environment-based configuration
-  - Colored output
-- **Storage**: File system abstractions
-  - JSON file operations
-  - Directory management
-- **Format**: Response formatting helpers
-  - Debug step visualization
-  - JSON response creation
+
+- **Logger**: Centralized logging with environment-based configuration
+- **Storage**: File system abstractions for JSONL operations
+- **Format**: MCP-compliant response formatting
 
 ### 4. Constants (`src/constants.ts`)
-- Configuration values
-- Scoring weights
+- File paths and directory names
+- Server metadata and version
 - Error messages
-- Tool metadata
 
 ## Design Principles
 
-1. **Separation of Concerns**: Each module has a single, well-defined responsibility
-2. **Type Safety**: Extensive use of TypeScript types for compile-time safety
-3. **Dependency Injection**: Services are loosely coupled and testable
-4. **Immutability**: Data structures are treated as immutable where possible
-5. **Error Handling**: Consistent error handling and messaging
+1. **Graph-First Architecture**: All debugging knowledge is represented as a directed graph
+2. **Knowledge Accumulation**: Every debugging session contributes to a growing knowledge base
+3. **Pattern Recognition**: Automatic identification of successful debugging patterns
+4. **Type Safety**: Comprehensive TypeScript types ensure compile-time safety
+5. **Simplicity**: Only three actions (CREATE, CONNECT, QUERY) provide full functionality
 
 ## Data Flow
 
-1. **Request Reception**: MCP server receives tool requests
-2. **Action Routing**: Requests are routed to appropriate DebugServer methods
-3. **Processing**: Business logic is executed (session management, searching)
-4. **Persistence**: Data is saved to file system as needed
-5. **Response**: Formatted responses are sent back to the client
+1. **Request Reception**: MCP server receives tool requests with action type
+2. **Action Dispatch**: Actions are routed to GraphService methods
+3. **Graph Operations**:
+   - CREATE: Add nodes with automatic edge creation
+   - CONNECT: Explicitly create relationships
+   - QUERY: Search and analyze the graph
+4. **Persistence**: Graph changes are persisted to JSONL files
+5. **Response**: Results are formatted as MCP-compliant responses
 
-## Key Improvements
+## Key Features
 
-- **Modularity**: Code is organized into logical modules
-- **Maintainability**: Clear separation makes updates easier
-- **Testability**: Services can be tested independently
-- **Performance**: Search index is optimized for quick lookups
-- **Extensibility**: New features can be added with minimal impact
+### Automatic Edge Creation
+When creating a node with a `parentId`, the system automatically creates an appropriate edge based on the node types:
+- Problem → Problem: `decomposes`
+- Problem → Hypothesis: `hypothesizes`
+- Hypothesis → Experiment: `tests`
+- Experiment → Observation: `produces`
+- Observation → Learning: `learns`
+
+### Query Capabilities
+- **similar-problems**: Find problems matching a pattern
+- **successful-patterns**: Identify debugging patterns that led to solutions
+- **learning-path**: Trace the path from problem to solution
+- **graph-visualization**: Export graph in Mermaid/DOT format
+- **node-details**: Get comprehensive information about a node
+- **related-nodes**: Find all connected nodes
+
+### Storage Format
+```
+~/.debug-thinking-mcp/
+├── nodes.jsonl          # All nodes (deduplicated on load)
+├── edges.jsonl          # All relationships
+└── graph-metadata.json  # Graph-level statistics
+```
+
+## Future Extensibility
+
+The graph-based architecture allows for easy extension:
+- New node types can be added without changing existing code
+- New edge types can represent additional relationships
+- New query types can provide specialized analysis
+- Pattern matching algorithms can be enhanced
+- Integration with external tools through graph export
