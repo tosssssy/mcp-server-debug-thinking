@@ -1,71 +1,73 @@
-# Security Policy
+# セキュリティポリシー
 
-## Supported Versions
+## サポートされているバージョン
 
-We release patches for security vulnerabilities. Which versions are eligible for receiving such patches depends on the CVSS v3.0 Rating:
+セキュリティ脆弱性に対するパッチをリリースしています。パッチの対象となるバージョンは、CVSS v3.0レーティングによります：
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
-| < 0.1   | :x:                |
+| バージョン | サポート状況          |
+| --------- | -------------------- |
+| 0.1.x     | :white_check_mark:   |
+| < 0.1     | :x:                  |
 
-## Reporting a Vulnerability
+## 脆弱性の報告
 
-We take the security of MCP Server Debug Thinking seriously. If you have discovered a security vulnerability in this project, please report it to us as described below.
+MCP Server Debug Thinkingのセキュリティを真剣に考えています。このプロジェクトでセキュリティ脆弱性を発見した場合は、以下の方法で報告してください。
 
-### Reporting Process
+### 報告プロセス
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+**セキュリティ脆弱性を公開のGitHub Issuesで報告しないでください。**
 
-Instead, please report security vulnerabilities by emailing:
+代わりに、以下のメールアドレスにセキュリティ脆弱性を報告してください：
+
 - your.email@example.com
 
-Please include the following information in your report:
+報告には以下の情報を含めてください：
 
-- Type of issue (e.g., buffer overflow, SQL injection, cross-site scripting, etc.)
-- Full paths of source file(s) related to the manifestation of the issue
-- The location of the affected source code (tag/branch/commit or direct URL)
-- Any special configuration required to reproduce the issue
-- Step-by-step instructions to reproduce the issue
-- Proof-of-concept or exploit code (if possible)
-- Impact of the issue, including how an attacker might exploit the issue
+- 問題の種類（例：バッファオーバーフロー、SQLインジェクション、クロスサイトスクリプティングなど）
+- 問題が発生するソースファイルのフルパス
+- 影響を受けるソースコードの場所（タグ/ブランチ/コミットまたは直接URL）
+- 問題を再現するために必要な特別な設定
+- 問題を再現するためのステップバイステップの手順
+- 概念実証またはエクスプロイトコード（可能な場合）
+- 攻撃者がこの問題をどのように悪用できるかを含む、問題の影響
 
-This information will help us triage your report more quickly.
+この情報は、報告を迅速にトリアージするのに役立ちます。
 
-### Response Timeline
+### 対応タイムライン
 
-- **Initial Response**: We will acknowledge receipt of your vulnerability report within 48 hours
-- **Status Update**: We will provide a status update within 5 business days
-- **Resolution**: We aim to resolve critical issues within 30 days
+- **初回応答**: 脆弱性報告の受領を48時間以内に確認します
+- **ステータス更新**: 5営業日以内にステータスの更新を提供します
+- **解決**: 重要な問題は30日以内の解決を目指します
 
-### Disclosure Policy
+### 開示ポリシー
 
-- We will confirm the vulnerability and determine its impact
-- We will release a fix as soon as possible, depending on the complexity of the issue
-- We will credit you for the discovery (unless you prefer to remain anonymous)
+- 脆弱性を確認し、その影響を判断します
+- 問題の複雑さに応じて、できるだけ早く修正をリリースします
+- 発見者としてクレジットします（匿名を希望する場合を除く）
 
-## Security Best Practices for Users
+## ユーザーのためのセキュリティベストプラクティス
 
-When using MCP Server Debug Thinking:
+MCP Server Debug Thinkingを使用する際：
 
-1. **Keep Dependencies Updated**: Regularly update the package and its dependencies
-2. **Secure Storage**: The `.debug-thinking-mcp/` directory contains debugging data. Ensure it's properly secured and not exposed publicly
-3. **Environment Variables**: Never commit sensitive environment variables to version control
-4. **Access Control**: Limit access to the MCP server to trusted clients only
+1. **依存関係を最新に保つ**: パッケージとその依存関係を定期的に更新する
+2. **安全なストレージ**: `.debug-thinking-mcp/` ディレクトリにはデバッグデータが含まれます。適切に保護され、公開されていないことを確認してください
+3. **環境変数**: 機密性の高い環境変数をバージョン管理にコミットしない
+4. **アクセス制御**: MCPサーバーへのアクセスを信頼できるクライアントのみに制限する
 
-## Security Features
+## セキュリティ機能
 
-The MCP Server Debug Thinking includes several security features:
+MCP Server Debug Thinkingには以下のセキュリティ機能が含まれています：
 
-- Data is stored locally in the project directory
-- No external network requests are made
-- No sensitive data is logged to console by default
-- File paths are sanitized before storage
+- データはプロジェクトディレクトリにローカルに保存されます
+- 外部ネットワークリクエストは行われません
+- デフォルトでは機密データはコンソールに記録されません
+- ファイルパスは保存前にサニタイズされます
 
-## Contact
+## 連絡先
 
-For any security-related questions, please contact:
-- Email: your.email@example.com
-- PGP Key: [Link to PGP key if available]
+セキュリティ関連の質問については、以下にお問い合わせください：
 
-Thank you for helping keep MCP Server Debug Thinking and its users safe!
+- メール: your.email@example.com
+- PGPキー: [利用可能な場合はPGPキーへのリンク]
+
+MCP Server Debug Thinkingとそのユーザーの安全を保つためにご協力いただきありがとうございます！

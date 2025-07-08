@@ -1,82 +1,83 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、Claude Code (claude.ai/code) がこのリポジトリのコードを扱う際のガイダンスを提供します。
 
-## Build and Development Commands
+## ビルドと開発コマンド
 
-- **Build**: `npm run build` - Compiles TypeScript and creates executable
-- **Development**: `npm run dev` - Runs TypeScript compiler in watch mode
-- **Clean**: `npm run clean` - Removes dist directory
-- **Rebuild**: `npm run rebuild` - Clean and build in sequence
-- **Lint**: `npm run lint` - Run ESLint on TypeScript files
-- **Format**: `npm run format` - Format code with Prettier
+- **ビルド**: `npm run build` - TypeScriptをコンパイルして実行可能ファイルを作成
+- **開発**: `npm run dev` - TypeScriptコンパイラをウォッチモードで実行
+- **クリーン**: `npm run clean` - distディレクトリを削除
+- **リビルド**: `npm run rebuild` - クリーンとビルドを連続実行
+- **リント**: `npm run lint` - TypeScriptファイルでESLintを実行
+- **フォーマット**: `npm run format` - Prettierでコードをフォーマット
 
-## Architecture Overview
+## アーキテクチャ概要
 
-This is a graph-based MCP (Model Context Protocol) server for systematic debugging using Problem-Solution Trees and Hypothesis-Experiment-Learning cycles.
+これは問題解決ツリーと仮説-実験-学習サイクルを使用した体系的なデバッグのための、グラフベースのMCP (Model Context Protocol) サーバーです。
 
-### Core Services
+### コアサービス
 
-- **GraphService** (`src/services/GraphService.ts`): Main service managing the debugging knowledge graph
-  - Handles CREATE, CONNECT, and QUERY actions
-  - Manages nodes (problems, hypotheses, experiments, observations, learnings, solutions)
-  - Manages edges (relationships between nodes)
-  - Provides pattern recognition and search capabilities
+- **GraphService** (`src/services/GraphService.ts`): デバッグ知識グラフを管理するメインサービス
+  - CREATE、CONNECT、QUERYアクションを処理
+  - ノード（問題、仮説、実験、観察、学習、解決策）を管理
+  - エッジ（ノード間の関係）を管理
+  - パターン認識と検索機能を提供
 
-- **GraphStorage** (`src/services/GraphStorage.ts`): Handles persistence of graph data
-  - Stores nodes and edges in JSONL format
-  - Manages graph metadata
-  - Provides efficient loading and saving
+- **GraphStorage** (`src/services/GraphStorage.ts`): グラフデータの永続化を処理
+  - ノードとエッジをJSONL形式で保存
+  - グラフメタデータを管理
+  - 効率的な読み込みと保存を提供
 
-### Type System
+### 型システム
 
-- **Graph Types** (`src/types/graph.ts`):
-  - `Node`: Base type for all graph nodes
-  - `Edge`: Relationships between nodes
-  - `DebugGraph`: The complete graph structure
-  - Specific node types: ProblemNode, HypothesisNode, ExperimentNode, etc.
+- **グラフ型** (`src/types/graph.ts`):
+  - `Node`: すべてのグラフノードの基本型
+  - `Edge`: ノード間の関係
+  - `DebugGraph`: 完全なグラフ構造
+  - 特定のノード型: ProblemNode、HypothesisNode、ExperimentNodeなど
 
-- **Action Types** (`src/types/graphActions.ts`):
-  - `CreateAction`: Parameters for creating nodes
-  - `ConnectAction`: Parameters for creating edges
-  - `QueryAction`: Parameters for searching the graph
-  - Response types for each action
+- **アクション型** (`src/types/graphActions.ts`):
+  - `CreateAction`: ノード作成のパラメータ
+  - `ConnectAction`: エッジ作成のパラメータ
+  - `QueryAction`: グラフ検索のパラメータ
+  - 各アクションのレスポンス型
 
-### MCP Tools Exposed
+### 公開されているMCPツール
 
-The server exposes a single tool: **debug_thinking** with three actions:
+サーバーは単一のツールを公開しています: **debug_thinking** （3つのアクション付き）
 
-1. **CREATE**: Add nodes to the knowledge graph
-   - Automatically creates edges based on parent-child relationships
-   - Supports all node types: problem, hypothesis, experiment, observation, learning, solution
+1. **CREATE**: 知識グラフにノードを追加
+   - 親子関係に基づいて自動的にエッジを作成
+   - すべてのノードタイプをサポート: problem、hypothesis、experiment、observation、learning、solution
 
-2. **CONNECT**: Create explicit relationships between nodes
-   - Supports relationship types: decomposes, hypothesizes, tests, produces, learns, contradicts, supports, solves
+2. **CONNECT**: ノード間に明示的な関係を作成
+   - 関係タイプをサポート: decomposes、hypothesizes、tests、produces、learns、contradicts、supports、solves
 
-3. **QUERY**: Search and analyze the graph
-   - Query types: similar-problems, successful-patterns, learning-path, graph-visualization, etc.
+3. **QUERY**: グラフを検索・分析
+   - クエリタイプ: similar-problems、successful-patterns、learning-path、graph-visualizationなど
 
-### Key Design Patterns
+### 主要な設計パターン
 
-- **Graph-based knowledge representation**: All debugging knowledge is stored as a directed graph
-- **Automatic edge creation**: Parent-child relationships automatically create appropriate edges
-- **Pattern recognition**: Identifies successful debugging patterns across sessions
-- **TypeScript-first**: Comprehensive type definitions ensure type safety
-- **File system persistence**: Graph data stored in `.debug-thinking-mcp/` directory
-- **Modular architecture**: Clean separation between graph operations, storage, and MCP interface
+- **グラフベースの知識表現**: すべてのデバッグ知識は有向グラフとして保存
+- **自動エッジ作成**: 親子関係は適切なエッジを自動的に作成
+- **パターン認識**: セッション間で成功したデバッグパターンを識別
+- **TypeScriptファースト**: 包括的な型定義により型安全性を確保
+- **ファイルシステム永続化**: グラフデータは`.debug-thinking-mcp/`ディレクトリに保存
+- **モジュラーアーキテクチャ**: グラフ操作、ストレージ、MCPインターフェース間の明確な分離
 
-### Entry Point
+### エントリーポイント
 
-The main entry point is `src/index.ts` which:
-- Sets up the MCP server using stdio transport
-- Routes actions to GraphService methods
-- Handles responses in MCP-compliant format
+メインエントリーポイントは`src/index.ts`で、以下を行います：
 
-## Development Notes
+- stdioトランスポートを使用してMCPサーバーをセットアップ
+- アクションをGraphServiceメソッドにルーティング
+- MCP準拠の形式でレスポンスを処理
 
-- The project uses TypeScript with ES2022 target
-- ESLint and Prettier are configured for code quality
-- Node.js 16+ is required
-- UUID v4 is used for generating unique IDs
-- Graph data is persisted as JSONL files for efficiency
-- The project follows the MCP SDK patterns for tool implementation
+## 開発メモ
+
+- プロジェクトはES2022ターゲットのTypeScriptを使用
+- ESLintとPrettierがコード品質のために設定済み
+- Node.js 16+が必要
+- ユニークIDの生成にUUID v4を使用
+- グラフデータは効率のためJSONLファイルとして永続化
+- プロジェクトはツール実装のためのMCP SDKパターンに従う

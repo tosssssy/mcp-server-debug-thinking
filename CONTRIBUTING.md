@@ -1,108 +1,108 @@
-# Contributing to MCP Server Debug Thinking
+# MCP Server Debug Thinkingへの貢献
 
-First off, thank you for considering contributing to MCP Server Debug Thinking! It's people like you that make this tool better for everyone.
+まず最初に、MCP Server Debug Thinkingへの貢献を検討していただきありがとうございます！あなたのような方々がこのツールをみんなにとってより良いものにしています。
 
-## Code of Conduct
+## 行動規範
 
-This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+このプロジェクトとそれに参加するすべての人は、私たちの[行動規範](CODE_OF_CONDUCT.md)に従います。参加することで、この規範を守ることが期待されます。
 
-## How Can I Contribute?
+## どのように貢献できますか？
 
-### Reporting Bugs
+### バグの報告
 
-Before creating bug reports, please check existing issues as you might find out that you don't need to create one. When you are creating a bug report, please include as many details as possible:
+バグレポートを作成する前に、既存のissueを確認してください。作成する必要がないことがわかるかもしれません。バグレポートを作成する際は、できるだけ多くの詳細を含めてください：
 
-- **Use a clear and descriptive title** for the issue to identify the problem
-- **Describe the exact steps which reproduce the problem** in as many details as possible
-- **Provide specific examples to demonstrate the steps**
-- **Describe the behavior you observed after following the steps**
-- **Explain which behavior you expected to see instead and why**
-- **Include screenshots and animated GIFs** if possible
-- **Include your environment details** (OS, Node.js version, Claude Desktop version)
+- **問題を特定するための明確で説明的なタイトル**を使用する
+- **問題を再現する正確な手順**をできるだけ詳細に記述する
+- **手順を示す具体的な例**を提供する
+- **手順に従った後に観察された動作**を記述する
+- **代わりに期待した動作とその理由**を説明する
+- 可能であれば**スクリーンショットやアニメーションGIF**を含める
+- **環境の詳細**（OS、Node.jsバージョン、Claude Desktopバージョン）を含める
 
-### Suggesting Enhancements
+### 機能改善の提案
 
-Enhancement suggestions are tracked as GitHub issues. When creating an enhancement suggestion, please include:
+機能改善の提案はGitHub issuesとして追跡されます。機能改善の提案を作成する際は、以下を含めてください：
 
-- **Use a clear and descriptive title** for the issue to identify the suggestion
-- **Provide a step-by-step description of the suggested enhancement**
-- **Provide specific examples to demonstrate the steps**
-- **Describe the current behavior** and **explain which behavior you expected to see instead**
-- **Explain why this enhancement would be useful**
+- **提案を特定するための明確で説明的なタイトル**を使用する
+- **提案された改善のステップバイステップの説明**を提供する
+- **手順を示す具体的な例**を提供する
+- **現在の動作**を記述し、**代わりに期待する動作**を説明する
+- **なぜこの改善が有用なのか**を説明する
 
-### Your First Code Contribution
+### 初めてのコード貢献
 
-Unsure where to begin contributing? You can start by looking through these `beginner` and `help-wanted` issues:
+どこから貢献を始めればいいかわかりませんか？これらの`beginner`と`help-wanted`のissueから始めることができます：
 
-- [Beginner issues](https://github.com/yourusername/mcp-server-debug-thinking/labels/beginner) - issues which should only require a few lines of code
-- [Help wanted issues](https://github.com/yourusername/mcp-server-debug-thinking/labels/help%20wanted) - issues which should be a bit more involved
+- [初心者向けissue](https://github.com/yourusername/mcp-server-debug-thinking/labels/beginner) - 数行のコードで済むはずのissue
+- [ヘルプ募集issue](https://github.com/yourusername/mcp-server-debug-thinking/labels/help%20wanted) - もう少し複雑なissue
 
-### Pull Requests
+### プルリクエスト
 
-1. Fork the repo and create your branch from `main`
-2. If you've added code that should be tested, add tests
-3. If you've changed APIs, update the documentation
-4. Ensure the test suite passes
-5. Make sure your code lints
-6. Issue that pull request!
+1. リポジトリをフォークし、`main`からブランチを作成する
+2. テストすべきコードを追加した場合は、テストを追加する
+3. APIを変更した場合は、ドキュメントを更新する
+4. テストスイートが通ることを確認する
+5. コードがリントを通ることを確認する
+6. プルリクエストを発行する！
 
-## Development Process
+## 開発プロセス
 
-### Setting Up Your Development Environment
+### 開発環境のセットアップ
 
-1. Fork and clone the repository:
+1. リポジトリをフォークしてクローン：
    ```bash
    git clone https://github.com/your-username/mcp-server-debug-thinking.git
    cd mcp-server-debug-thinking
    ```
 
-2. Install dependencies:
+2. 依存関係をインストール：
    ```bash
    npm install
    ```
 
-3. Create a branch for your feature or fix:
+3. 機能や修正のためのブランチを作成：
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
-4. Start development mode:
+4. 開発モードを開始：
    ```bash
    npm run dev
    ```
 
-### Code Style
+### コードスタイル
 
-- We use TypeScript for type safety
-- Follow the existing code style
-- Use meaningful variable and function names
-- Add comments for complex logic
-- Write self-documenting code when possible
+- 型安全性のためTypeScriptを使用
+- 既存のコードスタイルに従う
+- 意味のある変数名と関数名を使用
+- 複雑なロジックにはコメントを追加
+- 可能な場合は自己文書化コードを書く
 
-### Code Validation
+### コード検証
 
-- Ensure all code passes linting before submitting PR
-- Test your changes with Claude Desktop
+- PR提出前にすべてのコードがリントを通ることを確認
+- Claude Desktopで変更をテスト
 
 ```bash
-# Run linting
+# リントを実行
 npm run lint
 
-# Format code
+# コードをフォーマット
 npm run format
 
-# Build the project
+# プロジェクトをビルド
 npm run build
 ```
 
-### Commit Messages
+### コミットメッセージ
 
-- Use the present tense ("Add feature" not "Added feature")
-- Use the imperative mood ("Move cursor to..." not "Moves cursor to...")
-- Limit the first line to 72 characters or less
-- Reference issues and pull requests liberally after the first line
+- 現在形を使用（"Added feature"ではなく"Add feature"）
+- 命令形を使用（"Moves cursor to..."ではなく"Move cursor to..."）
+- 最初の行は72文字以下に制限
+- 最初の行の後でissueとプルリクエストを自由に参照
 
-Example:
+例：
 ```
 Add pattern recognition for async/await errors
 
@@ -113,52 +113,52 @@ Add pattern recognition for async/await errors
 Fixes #123
 ```
 
-### Documentation
+### ドキュメント
 
-- Update README.md if you change functionality
-- Update CHANGELOG.md following [Keep a Changelog](https://keepachangelog.com/) format
-- Add JSDoc comments to new functions and classes
-- Include examples in your documentation
+- 機能を変更した場合はREADME.mdを更新
+- [Keep a Changelog](https://keepachangelog.com/)形式に従ってCHANGELOG.mdを更新
+- 新しい関数とクラスにJSDocコメントを追加
+- ドキュメントに例を含める
 
-## Project Structure
+## プロジェクト構造
 
 ```
 mcp-server-debug-thinking/
-├── src/                # Source files
-│   ├── index.ts       # Main server implementation
-│   ├── types/         # TypeScript type definitions
-│   ├── services/      # Core services (GraphService, GraphStorage)
-│   └── utils/         # Utility functions
-├── dist/               # Compiled JavaScript files
-├── .github/            # GitHub specific files
-│   ├── ISSUE_TEMPLATE/ # Issue templates
+├── src/                # ソースファイル
+│   ├── index.ts       # メインサーバー実装
+│   ├── types/         # TypeScript型定義
+│   ├── services/      # コアサービス（GraphService、GraphStorage）
+│   └── utils/         # ユーティリティ関数
+├── dist/               # コンパイル済みJavaScriptファイル
+├── .github/            # GitHub固有のファイル
+│   ├── ISSUE_TEMPLATE/ # Issueテンプレート
 │   └── workflows/      # GitHub Actions
-├── package.json        # Project metadata and dependencies
-├── tsconfig.json       # TypeScript configuration
-└── README.md           # Project documentation
+├── package.json        # プロジェクトメタデータと依存関係
+├── tsconfig.json       # TypeScript設定
+└── README.md           # プロジェクトドキュメント
 ```
 
-## Release Process
+## リリースプロセス
 
-1. Update version in `package.json`
-2. Update `CHANGELOG.md`
-3. Create a git tag: `git tag -a v1.0.0 -m "Release version 1.0.0"`
-4. Push changes: `git push origin main --tags`
-5. GitHub Actions will automatically publish to npm
+1. `package.json`のバージョンを更新
+2. `CHANGELOG.md`を更新
+3. gitタグを作成：`git tag -a v1.0.0 -m "Release version 1.0.0"`
+4. 変更をプッシュ：`git push origin main --tags`
+5. GitHub Actionsが自動的にnpmに公開
 
-## Recognition
+## 貢献者の認識
 
-Contributors will be recognized in the following ways:
+貢献者は以下の方法で認識されます：
 
-- Added to the Contributors section in README.md
-- Mentioned in release notes for significant contributions
-- Given credit in commit messages and pull requests
+- README.mdのContributorsセクションに追加
+- 重要な貢献についてはリリースノートで言及
+- コミットメッセージとプルリクエストでクレジット付与
 
-## Questions?
+## 質問？
 
-Feel free to ask questions in:
+以下で気軽に質問してください：
 
 - [GitHub Discussions](https://github.com/yourusername/mcp-server-debug-thinking/discussions)
 - [GitHub Issues](https://github.com/yourusername/mcp-server-debug-thinking/issues)
 
-Thank you for contributing to make debugging better for everyone! 🎉
+みんなのためにデバッグをより良くする貢献をありがとうございます！ 🎉

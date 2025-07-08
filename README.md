@@ -1,30 +1,30 @@
-# MCP Server Debug Thinking
+# MCP サーバー デバッグ思考
 
 [![npm version](https://img.shields.io/npm/v/mcp-server-debug-thinking.svg)](https://www.npmjs.com/package/mcp-server-debug-thinking)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/node/v/mcp-server-debug-thinking.svg)](https://nodejs.org)
 
-A graph-based Model Context Protocol (MCP) server for systematic debugging using Problem-Solution Trees and Hypothesis-Experiment-Learning cycles.
+問題解決ツリーと仮説-実験-学習サイクルを使用した体系的なデバッグのための、グラフベースのModel Context Protocol (MCP) サーバーです。
 
-## 🚀 Features
+## 🚀 特徴
 
-- **🌳 Problem-Solution Trees**: Decompose complex problems hierarchically
-- **🔬 H-E-L Cycles**: Hypothesis → Experiment → Learning methodology
-- **🧠 Knowledge Graph**: Build reusable debugging knowledge over time
-- **🔍 Pattern Recognition**: Automatically identify successful debugging patterns
-- **💡 Learning Extraction**: Capture and reuse insights from every session
-- **📊 Graph Analysis**: Query similar problems, successful patterns, and solutions
-- **💾 Persistent Storage**: All debugging knowledge is saved and searchable
+- **🌳 問題解決ツリー**: 複雑な問題を階層的に分解
+- **🔬 H-E-Lサイクル**: 仮説 → 実験 → 学習の方法論
+- **🧠 知識グラフ**: 時間をかけて再利用可能なデバッグ知識を構築
+- **🔍 パターン認識**: 成功したデバッグパターンを自動的に識別
+- **💡 学習の抽出**: すべてのセッションから洞察を取得して再利用
+- **📊 グラフ分析**: 類似の問題、成功パターン、解決策をクエリ
+- **💾 永続的ストレージ**: すべてのデバッグ知識が保存され、検索可能
 
-## 📦 Installation
+## 📦 インストール
 
-### Via npm (Recommended)
+### npm経由（推奨）
 
 ```bash
 npm install -g mcp-server-debug-thinking
 ```
 
-### From Source
+### ソースから
 
 ```bash
 git clone https://github.com/yourusername/mcp-server-debug-thinking.git
@@ -33,11 +33,11 @@ npm install
 npm run build
 ```
 
-## 🔧 Configuration
+## 🔧 設定
 
-### Claude Desktop Integration
+### Claude Desktop統合
 
-Add to your Claude Desktop configuration:
+Claude Desktopの設定に追加します：
 
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
@@ -53,37 +53,39 @@ Add to your Claude Desktop configuration:
 }
 ```
 
-## 📖 Core Concepts
+## 📖 核となる概念
 
-This tool models debugging as a **knowledge graph** where:
+このツールはデバッグを**知識グラフ**としてモデル化します：
 
-### Nodes
-- **Problem**: Issues to be solved
-- **Hypothesis**: Theories about causes
-- **Experiment**: Tests to validate hypotheses
-- **Observation**: Results from experiments
-- **Learning**: Insights gained
-- **Solution**: Verified fixes
+### ノード
 
-### Edges (Relationships)
-- `decomposes`: Problem → SubProblem
-- `hypothesizes`: Problem → Hypothesis
-- `tests`: Hypothesis → Experiment
-- `produces`: Experiment → Observation
-- `learns`: Observation → Learning
-- `contradicts`/`supports`: Evidence ↔ Hypothesis
-- `solves`: Solution → Problem
+- **Problem（問題）**: 解決すべき課題
+- **Hypothesis（仮説）**: 原因についての理論
+- **Experiment（実験）**: 仮説を検証するテスト
+- **Observation（観察）**: 実験からの結果
+- **Learning（学習）**: 得られた洞察
+- **Solution（解決策）**: 検証済みの修正
 
-## 🎯 Three Simple Actions
+### エッジ（関係性）
 
-### 1. CREATE - Add nodes to the graph
+- `decomposes`: 問題 → サブ問題
+- `hypothesizes`: 問題 → 仮説
+- `tests`: 仮説 → 実験
+- `produces`: 実験 → 観察
+- `learns`: 観察 → 学習
+- `contradicts`/`supports`: 証拠 ↔ 仮説
+- `solves`: 解決策 → 問題
+
+## 🎯 3つのシンプルなアクション
+
+### 1. CREATE - グラフにノードを追加
 
 ```typescript
 {
   action: "create",
   nodeType: "problem" | "hypothesis" | "experiment" | "observation" | "learning" | "solution",
-  content: "Description of the node",
-  parentId?: "parent-node-id",  // Auto-creates appropriate relationship
+  content: "ノードの説明",
+  parentId?: "親ノードのID",  // 適切な関係を自動作成
   metadata?: {
     confidence?: 75,
     tags?: ["react", "performance"]
@@ -91,81 +93,81 @@ This tool models debugging as a **knowledge graph** where:
 }
 ```
 
-### 2. CONNECT - Create relationships
+### 2. CONNECT - 関係を作成
 
 ```typescript
 {
   action: "connect",
-  from: "source-node-id",
-  to: "target-node-id",
+  from: "ソースノードID",
+  to: "ターゲットノードID",
   type: "supports" | "contradicts" | "learns" | ...,
   strength?: 0.8,
   metadata?: {
-    reasoning: "Based on test results..."
+    reasoning: "テスト結果に基づいて..."
   }
 }
 ```
 
-### 3. QUERY - Search and analyze
+### 3. QUERY - 検索と分析
 
 ```typescript
 {
   action: "query",
   queryType: "similar-problems" | "successful-patterns" | "learning-path" | ...,
   parameters: {
-    pattern?: "search text",
-    nodeId?: "reference-node",
+    pattern?: "検索テキスト",
+    nodeId?: "参照ノード",
     confidence?: 70,
     limit?: 10
   }
 }
 ```
 
-## 💡 Usage Examples
+## 💡 使用例
 
-### Basic Debugging Workflow
+### 基本的なデバッグワークフロー
 
 ```typescript
-// 1. Define the problem
+// 1. 問題を定義
 await use_tool("debug_thinking", {
   action: "create",
   nodeType: "problem",
-  content: "App crashes on startup with TypeError"
+  content: "TypeErrorでアプリが起動時にクラッシュする"
 });
 
-// 2. Create hypothesis (auto-creates 'hypothesizes' edge)
+// 2. 仮説を作成（'hypothesizes'エッジを自動作成）
 await use_tool("debug_thinking", {
   action: "create",
   nodeType: "hypothesis",
-  content: "Missing null check in user data",
+  content: "ユーザーデータにnullチェックが不足している",
   parentId: "problem-id",
   metadata: { confidence: 80 }
 });
 
-// 3. Design experiment (auto-creates 'tests' edge)
+// 3. 実験を設計（'tests'エッジを自動作成）
 await use_tool("debug_thinking", {
   action: "create",
   nodeType: "experiment",
-  content: "Add optional chaining to user.name access",
+  content: "user.nameアクセスにオプショナルチェーンを追加",
   parentId: "hypothesis-id"
 });
 
-// 4. Record observation (auto-creates 'produces' edge)
+// 4. 観察を記録（'produces'エッジを自動作成）
 await use_tool("debug_thinking", {
   action: "create",
   nodeType: "observation",
-  content: "Error resolved, app loads successfully",
+  content: "エラーが解決し、アプリが正常に起動する",
   parentId: "experiment-id"
 });
 
-// 5. Extract learning
+// 5. 学習を抽出
 await use_tool("debug_thinking", {
   action: "create",
   nodeType: "learning",
-  content: "Always validate external data before use"
+  content: "外部データは使用前に必ず検証する"
 });
 
-// 6. Connect observation to learning
+// 6. 観察と学習を接続
 await use_tool("debug_thinking", {
   action: "connect",
   from: "observation-id",
@@ -174,20 +176,20 @@ await use_tool("debug_thinking", {
 });
 ```
 
-### Advanced Queries
+### 高度なクエリ
 
 ```typescript
-// Find similar problems
+// 類似の問題を検索
 await use_tool("debug_thinking", {
   action: "query",
   queryType: "similar-problems",
   parameters: {
-    pattern: "TypeError null reference",
+    pattern: "TypeError null参照",
     limit: 5
   }
 });
 
-// Find successful patterns
+// 成功パターンを検索
 await use_tool("debug_thinking", {
   action: "query",
   queryType: "successful-patterns",
@@ -196,7 +198,7 @@ await use_tool("debug_thinking", {
   }
 });
 
-// Trace learning path
+// 学習パスをトレース
 await use_tool("debug_thinking", {
   action: "query",
   queryType: "learning-path",
@@ -205,7 +207,7 @@ await use_tool("debug_thinking", {
   }
 });
 
-// Visualize subgraph
+// サブグラフを視覚化
 await use_tool("debug_thinking", {
   action: "query",
   queryType: "graph-visualization",
@@ -216,89 +218,89 @@ await use_tool("debug_thinking", {
 });
 ```
 
-### Complex Problem Decomposition
+### 複雑な問題の分解
 
 ```typescript
-// Root problem
+// ルート問題
 const rootProblem = await use_tool("debug_thinking", {
   action: "create",
   nodeType: "problem",
-  content: "Application performance degrades over time"
+  content: "アプリケーションのパフォーマンスが時間とともに低下する"
 });
 
-// Decompose into sub-problems
+// サブ問題に分解
 await use_tool("debug_thinking", {
   action: "create",
   nodeType: "problem",
-  content: "Memory usage increases continuously",
+  content: "メモリ使用量が継続的に増加する",
   parentId: rootProblem.nodeId
 });
 
 await use_tool("debug_thinking", {
   action: "create",
   nodeType: "problem",
-  content: "API response times growing",
+  content: "APIレスポンス時間が増大している",
   parentId: rootProblem.nodeId
 });
 
-// Continue decomposition and investigation...
+// 分解と調査を継続...
 ```
 
-## 📁 Data Storage
+## 📁 データストレージ
 
-All graph data is persisted in `~/.debug-thinking-mcp/`:
-
-```
-~/.debug-thinking-mcp/
-├── nodes.jsonl          # All nodes in JSONL format
-├── edges.jsonl          # All relationships
-└── graph-metadata.json  # Graph statistics
-```
-
-## 🔍 Query Types
-
-- **similar-problems**: Find problems similar to a given pattern
-- **successful-patterns**: Identify patterns that led to solutions
-- **failed-hypotheses**: Learn from disproven theories
-- **learning-path**: Trace the path from problem to solution
-- **solution-candidates**: Find potential solutions for a problem
-- **graph-visualization**: Export graph in Mermaid/DOT format
-- **node-details**: Get comprehensive information about a node
-- **related-nodes**: Find all connected nodes
-
-## 🛠️ Development
+すべてのグラフデータは `~/.debug-thinking-mcp/` に永続化されます：
 
 ```bash
-# Install dependencies
+~/.debug-thinking-mcp/
+├── nodes.jsonl          # JSONL形式のすべてのノード
+├── edges.jsonl          # すべての関係
+└── graph-metadata.json  # グラフの統計情報
+```
+
+## 🔍 クエリタイプ
+
+- **similar-problems**: 指定パターンに類似する問題を検索
+- **successful-patterns**: 解決に至ったパターンを識別
+- **failed-hypotheses**: 否定された理論から学習
+- **learning-path**: 問題から解決までのパスをトレース
+- **solution-candidates**: 問題の潜在的な解決策を検索
+- **graph-visualization**: グラフをMermaid/DOT形式でエクスポート
+- **node-details**: ノードの包括的な情報を取得
+- **related-nodes**: すべての接続されたノードを検索
+
+## 🛠️ 開発
+
+```bash
+# 依存関係をインストール
 npm install
 
-# Run in development mode
+# 開発モードで実行
 npm run dev
 
-# Build for production
+# プロダクション用にビルド
 npm run build
 
-# Run linter
+# リンターを実行
 npm run lint
 
-# Format code
+# コードをフォーマット
 npm run format
 ```
 
-## 🤝 Contributing
+## 🤝 貢献
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+貢献を歓迎します！詳細については[貢献ガイド](CONTRIBUTING.md)をご覧ください。
 
-## 📄 License
+## 📄 ライセンス
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+このプロジェクトはMITライセンスの下でライセンスされています - 詳細は[LICENSE](LICENSE)ファイルをご覧ください。
 
-## 🙏 Acknowledgments
+## 🙏 謝辞
 
-- Built on the [Model Context Protocol](https://modelcontextprotocol.io)
-- Inspired by Problem-Solution Trees and scientific debugging methods
-- Thanks to all contributors and users
+- [Model Context Protocol](https://modelcontextprotocol.io)上に構築
+- 問題解決ツリーと科学的デバッグ手法に着想を得て
+- すべての貢献者とユーザーに感謝
 
 ---
 
-Made with ❤️ by the MCP community
+MCPコミュニティによって ❤️ を込めて作られました
