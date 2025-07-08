@@ -1,6 +1,6 @@
 {
   "name": "mcp-server-debug-thinking",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Graph-based MCP server for systematic debugging using Problem-Solution Trees and Hypothesis-Experiment-Learning cycles",
   "type": "module",
   "main": "dist/index.js",
