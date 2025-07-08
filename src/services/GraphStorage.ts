@@ -26,10 +26,10 @@ export class GraphStorage {
   /**
    * ストレージパスを初期化
    * 環境変数DEBUG_DATA_DIRが設定されていればそれを使用
-   * 指定がなければホームディレクトリ以下に保存
+   * 指定がなければカレントディレクトリ（MCPを呼び出すプロジェクトのルート）に保存
    */
   constructor() {
-    const baseDir = process.env.DEBUG_DATA_DIR || os.homedir();
+    const baseDir = process.env.DEBUG_DATA_DIR || process.cwd();
     this.dataDir = path.join(baseDir, DATA_DIR_NAME);
     this.nodesFile = path.join(this.dataDir, 'nodes.jsonl');
     this.edgesFile = path.join(this.dataDir, 'edges.jsonl');
