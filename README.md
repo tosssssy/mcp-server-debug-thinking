@@ -1,46 +1,64 @@
-# MCP サーバー デバッグ思考
+# 🧠 Debug Thinking MCP
 
-[![npm version](https://img.shields.io/npm/v/mcp-server-debug-thinking.svg)](https://www.npmjs.com/package/mcp-server-debug-thinking)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/node/v/mcp-server-debug-thinking.svg)](https://nodejs.org)
+[![npm version](https://img.shields.io/npm/v/mcp-server-debug-thinking.svg?style=flat-square)](https://www.npmjs.com/package/mcp-server-debug-thinking)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/node/v/mcp-server-debug-thinking.svg?style=flat-square)](https://nodejs.org)
+[![MCP SDK](https://img.shields.io/badge/MCP%20SDK-0.5.0-blue?style=flat-square)](https://github.com/modelcontextprotocol/sdk)
 
-問題解決ツリーと仮説-実験-学習サイクルを使用した体系的なデバッグのための、グラフベースのModel Context Protocol (MCP) サーバーです。
+---
 
-## 🚀 特徴
+## Debug Thinking MCP について
 
-- **🌳 問題解決ツリー**: 複雑な問題を階層的に分解
-- **🔬 H-E-Lサイクル**: 仮説 → 実験 → 学習の方法論
-- **🧠 知識グラフ**: 時間をかけて再利用可能なデバッグ知識を構築
-- **🔍 パターン認識**: 成功したデバッグパターンを自動的に識別
-- **💡 学習の抽出**: すべてのセッションから洞察を取得して再利用
-- **📊 グラフ分析**: 類似の問題、成功パターン、解決策をクエリ
-- **💾 永続的ストレージ**: すべてのデバッグ知識が保存され、検索可能
+**デバッグ時の思考フレームワークと、そこで得た知見をローカルディレクトリに保存 → 活用までを提供する MCP サーバーです。**
 
-## 📦 インストール
+**Debug Thinking MCP** は、デバッグプロセスを**永続的な知識グラフ**として構造化し、を**再利用可能な資産**に変えます。
 
-### npm経由（推奨）
+## 🚀 主要機能
+
+<table>
+<tr>
+<td width="50%">
+
+### 🌳 問題解決ツリー
+
+複雑な問題を管理可能なサブ問題に分解し、各問題を独立して解決
+
+</td>
+<td width="50%">
+
+### 🔬 H-E-Lサイクル
+
+仮説を立て、実験で検証し、観察から学習を抽出する科学的手法
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🧠 知識グラフ
+
+すべてのデバッグセッションが検索可能な知識として蓄積
+
+</td>
+<td width="50%">
+
+### 🔍 パターン認識
+
+過去の成功パターンを自動識別し、類似問題に適用
+
+</td>
+</tr>
+</table>
+
+## 📦 クイックスタート
+
+### 1. インストール
 
 ```bash
 npm install -g mcp-server-debug-thinking
 ```
 
-### ソースから
-
-```bash
-git clone https://github.com/yourusername/mcp-server-debug-thinking.git
-cd mcp-server-debug-thinking
-npm install
-npm run build
-```
-
-## 🔧 設定
-
-### Claude Desktop統合
-
-Claude Desktopの設定に追加します：
-
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+### 2. MCP Server 設定
 
 ```json
 {
@@ -53,254 +71,272 @@ Claude Desktopの設定に追加します：
 }
 ```
 
-## 📖 核となる概念
+## 🎯 使用方法
 
-このツールはデバッグを**知識グラフ**としてモデル化します：
+### 基本的なデバッグフロー
 
-### ノード
-
-- **Problem（問題）**: 解決すべき課題
-- **Hypothesis（仮説）**: 原因についての理論
-- **Experiment（実験）**: 仮説を検証するテスト
-- **Observation（観察）**: 実験からの結果
-- **Learning（学習）**: 得られた洞察
-- **Solution（解決策）**: 検証済みの修正
-
-### エッジ（関係性）
-
-- `decomposes`: 問題 → サブ問題
-- `hypothesizes`: 問題 → 仮説
-- `tests`: 仮説 → 実験
-- `produces`: 実験 → 観察
-- `learns`: 観察 → 学習
-- `contradicts`/`supports`: 証拠 ↔ 仮説
-- `solves`: 解決策 → 問題
-
-## 🎯 3つのシンプルなアクション
-
-### 1. CREATE - グラフにノードを追加
-
-```typescript
-{
-  action: "create",
-  nodeType: "problem" | "hypothesis" | "experiment" | "observation" | "learning" | "solution",
-  content: "ノードの説明",
-  parentId?: "親ノードのID",  // 適切な関係を自動作成
-  metadata?: {
-    confidence?: 75,
-    tags?: ["react", "performance"]
-  }
-}
+```mermaid
+graph LR
+    A[問題発生] --> B[問題を定義]
+    B --> C[仮説を立てる]
+    C --> D[実験を設計]
+    D --> E[結果を観察]
+    E --> F{問題解決?}
+    F -->|Yes| G[学習を抽出]
+    F -->|No| C
+    G --> H[知識として保存]
 ```
 
-### 2. CONNECT - 関係を作成
+### 実際の使用例
+
+#### 1️⃣ 問題の定義
 
 ```typescript
-{
-  action: "connect",
-  from: "ソースノードID",
-  to: "ターゲットノードID",
-  type: "supports" | "contradicts" | "learns" | ...,
-  strength?: 0.8,
-  metadata?: {
-    reasoning: "テスト結果に基づいて..."
-  }
-}
-```
-
-### 3. QUERY - 検索と分析
-
-```typescript
-{
-  action: "query",
-  queryType: "similar-problems" | "successful-patterns" | "learning-path" | ...,
-  parameters: {
-    pattern?: "検索テキスト",
-    nodeId?: "参照ノード",
-    confidence?: 70,
-    limit?: 10
-  }
-}
-```
-
-## 💡 使用例
-
-### 基本的なデバッグワークフロー
-
-```typescript
-// 1. 問題を定義
 await use_tool("debug_thinking", {
   action: "create",
   nodeType: "problem",
-  content: "TypeErrorでアプリが起動時にクラッシュする"
-});
-
-// 2. 仮説を作成（'hypothesizes'エッジを自動作成）
-await use_tool("debug_thinking", {
-  action: "create",
-  nodeType: "hypothesis",
-  content: "ユーザーデータにnullチェックが不足している",
-  parentId: "problem-id",
-  metadata: { confidence: 80 }
-});
-
-// 3. 実験を設計（'tests'エッジを自動作成）
-await use_tool("debug_thinking", {
-  action: "create",
-  nodeType: "experiment",
-  content: "user.nameアクセスにオプショナルチェーンを追加",
-  parentId: "hypothesis-id"
-});
-
-// 4. 観察を記録（'produces'エッジを自動作成）
-await use_tool("debug_thinking", {
-  action: "create",
-  nodeType: "observation",
-  content: "エラーが解決し、アプリが正常に起動する",
-  parentId: "experiment-id"
-});
-
-// 5. 学習を抽出
-await use_tool("debug_thinking", {
-  action: "create",
-  nodeType: "learning",
-  content: "外部データは使用前に必ず検証する"
-});
-
-// 6. 観察と学習を接続
-await use_tool("debug_thinking", {
-  action: "connect",
-  from: "observation-id",
-  to: "learning-id",
-  type: "learns"
+  content: "Next.jsアプリが'TypeError: Cannot read property of undefined'でクラッシュ",
+  metadata: {
+    tags: ["nextjs", "runtime-error", "production"],
+  },
 });
 ```
 
-### 高度なクエリ
+#### 2️⃣ 仮説の作成
 
 ```typescript
-// 類似の問題を検索
+await use_tool("debug_thinking", {
+  action: "create",
+  nodeType: "hypothesis",
+  content: "SSRでのデータフェッチ時にundefinedチェックが不足している可能性",
+  parentId: "problem-123",
+  metadata: {
+    confidence: 85,
+  },
+});
+```
+
+#### 3️⃣ 実験と観察
+
+```typescript
+// 実験を実行
+await use_tool("debug_thinking", {
+  action: "create",
+  nodeType: "experiment",
+  content: "getServerSidePropsでオプショナルチェーンを追加",
+  parentId: "hypothesis-456",
+});
+
+// 結果を記録
+await use_tool("debug_thinking", {
+  action: "create",
+  nodeType: "observation",
+  content: "エラーが解消し、ページが正常にレンダリングされる",
+  parentId: "experiment-789",
+});
+```
+
+#### 4️⃣ 知識の活用
+
+```typescript
+// 類似問題を検索
 await use_tool("debug_thinking", {
   action: "query",
   queryType: "similar-problems",
   parameters: {
-    pattern: "TypeError null参照",
-    limit: 5
-  }
+    pattern: "TypeError undefined Next.js SSR",
+    limit: 5,
+  },
 });
+```
 
-// 成功パターンを検索
-await use_tool("debug_thinking", {
+## 📊 グラフ構造
+
+### デバッグ知識グラフの仕組み
+
+Debug Thinkingは、すべてのデバッグプロセスを**有向グラフ**として記録します。各ノードは特定の意味を持ち、エッジ（矢印）がノード間の関係を表現します。
+
+### ノードタイプと役割
+
+| ノードタイプ       | 役割                     | 例                                                    |
+| ------------------ | ------------------------ | ----------------------------------------------------- |
+| 🔴 **Problem**     | 解決すべき問題・エラー   | `TypeError: Cannot read property 'name' of undefined` |
+| 🔵 **Hypothesis**  | 問題の原因についての仮説 | `ユーザーデータがnullの可能性`                        |
+| 🟡 **Experiment**  | 仮説を検証する実験       | `nullチェックを追加してテスト`                        |
+| 🟢 **Observation** | 実験結果の観察           | `エラーが解消した`                                    |
+| ⚪ **Learning**    | 得られた知見・教訓       | `外部APIのデータは必ず検証が必要`                     |
+| 🟣 **Solution**    | 検証済みの解決策         | `オプショナルチェーンの実装`                          |
+
+### 関係性（エッジ）の種類
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+**問題の分解**
+
+```mermaid
+graph TD
+    P1[🔴 問題] -->|decomposes| P2[🔴 サブ問題]
+```
+
+大きな問題を小さく分割
+
+</td>
+<td width="33%" valign="top">
+
+**仮説検証サイクル**
+
+```mermaid
+graph TD
+    P3[🔴 問題] -->|hypothesizes| H[🔵 仮説]
+    H -->|tests| E[🟡 実験]
+    E -->|produces| O[🟢 観察]
+```
+
+仮説→実験→観察の流れ
+
+</td>
+<td width="33%" valign="top">
+
+**知識の蓄積**
+
+```mermaid
+graph TD
+    O2[🟢 観察] -->|learns| L[⚪ 学習]
+    L -->|solves| P4[🔴 問題]
+```
+
+観察から学習し解決へ
+
+</td>
+</tr>
+</table>
+
+### 実際のデバッグ例：「ボタンクリックが効かない」
+
+```mermaid
+graph TD
+    P["🔴 問題<br/>ボタンが反応しない"]
+
+    P -->|hypothesizes| H1["🔵 仮説1<br/>イベントリスナーが<br/>登録されていない"]
+    P -->|hypothesizes| H2["🔵 仮説2<br/>別の要素が<br/>ボタンを覆っている"]
+
+    H1 -->|tests| E1["🟡 実験1<br/>console.logで<br/>クリック確認"]
+    E1 -->|produces| O1["🟢 観察1<br/>ログが出力<br/>されない"]
+
+    H2 -->|tests| E2["🟡 実験2<br/>DevToolsで<br/>要素を調査"]
+    E2 -->|produces| O2["🟢 観察2<br/>透明なdivが<br/>上に存在"]
+
+    O1 -->|supports| H1
+    O2 -->|supports| H2
+
+    O2 -->|learns| L1["⚪ 学習<br/>z-indexの確認は<br/>デバッグの基本"]
+
+    L1 -->|solves| S["🟣 解決策<br/>z-indexを修正"]
+    S -->|solves| P
+
+    style P fill:#ff6b6b,stroke:#333,stroke-width:3px
+    style H1 fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style H2 fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style E1 fill:#f39c12,stroke:#333,stroke-width:2px
+    style E2 fill:#f39c12,stroke:#333,stroke-width:2px
+    style O1 fill:#2ecc71,stroke:#333,stroke-width:2px
+    style O2 fill:#2ecc71,stroke:#333,stroke-width:2px
+    style L1 fill:#ecf0f1,stroke:#333,stroke-width:2px
+    style S fill:#9b59b6,stroke:#333,stroke-width:2px
+```
+
+この例では、よくある「ボタンがクリックできない」問題を通じて、Debug Thinkingがどのように動作するかを示しています：
+
+1. **問題を定義**: ボタンが反応しないという明確な問題
+2. **複数の仮説**: イベントリスナーの問題とレイアウトの問題
+3. **実験で検証**: console.logとDevToolsを使った検証
+4. **観察から学習**: z-indexの重要性を学習
+5. **解決策の適用**: 具体的な修正方法
+
+## 🔍 高度なクエリ機能
+
+### 成功パターンの検索
+
+```typescript
+const patterns = await use_tool("debug_thinking", {
   action: "query",
   queryType: "successful-patterns",
   parameters: {
-    tags: ["react", "state-management"]
-  }
+    tags: ["react", "performance"],
+    minConfidence: 80,
+  },
 });
+```
 
-// 学習パスをトレース
-await use_tool("debug_thinking", {
+### 学習パスの可視化
+
+```typescript
+const learningPath = await use_tool("debug_thinking", {
   action: "query",
   queryType: "learning-path",
   parameters: {
-    nodeId: "problem-id"
-  }
+    nodeId: "problem-root-id",
+  },
 });
+```
 
-// サブグラフを視覚化
-await use_tool("debug_thinking", {
+### グラフのエクスポート
+
+```typescript
+const visualization = await use_tool("debug_thinking", {
   action: "query",
   queryType: "graph-visualization",
   parameters: {
-    nodeId: "root-problem-id",
-    depth: 3
-  }
+    format: "mermaid",
+    depth: 3,
+  },
 });
 ```
 
-### 複雑な問題の分解
+## 🏗️ アーキテクチャ
 
-```typescript
-// ルート問題
-const rootProblem = await use_tool("debug_thinking", {
-  action: "create",
-  nodeType: "problem",
-  content: "アプリケーションのパフォーマンスが時間とともに低下する"
-});
-
-// サブ問題に分解
-await use_tool("debug_thinking", {
-  action: "create",
-  nodeType: "problem",
-  content: "メモリ使用量が継続的に増加する",
-  parentId: rootProblem.nodeId
-});
-
-await use_tool("debug_thinking", {
-  action: "create",
-  nodeType: "problem",
-  content: "APIレスポンス時間が増大している",
-  parentId: rootProblem.nodeId
-});
-
-// 分解と調査を継続...
+```text
+mcp-server-debug-thinking/
+├── src/
+│   ├── index.ts              # MCPサーバーエントリーポイント
+│   ├── services/
+│   │   ├── GraphService.ts   # グラフ操作のコアロジック
+│   │   └── GraphStorage.ts   # 永続化レイヤー
+│   ├── types/
+│   │   ├── graph.ts          # グラフデータ型定義
+│   │   └── graphActions.ts   # アクション型定義
+│   └── utils/
+│       └── logger.ts         # ロギングユーティリティ
+└── .debug-thinking-mcp/      # データストレージ
+    ├── nodes.jsonl           # ノードデータ
+    ├── edges.jsonl           # エッジデータ
+    └── graph-metadata.json   # メタデータ
 ```
 
-## 📁 データストレージ
+## 🛠️ 開発者向け
 
-すべてのグラフデータは `~/.debug-thinking-mcp/` に永続化されます：
+### ローカル開発
 
 ```bash
-~/.debug-thinking-mcp/
-├── nodes.jsonl          # JSONL形式のすべてのノード
-├── edges.jsonl          # すべての関係
-└── graph-metadata.json  # グラフの統計情報
-```
+# リポジトリをクローン
+git clone https://github.com/tosssssy/mcp-server-debug-thinking.git
+cd mcp-server-debug-thinking
 
-## 🔍 クエリタイプ
-
-- **similar-problems**: 指定パターンに類似する問題を検索
-- **successful-patterns**: 解決に至ったパターンを識別
-- **failed-hypotheses**: 否定された理論から学習
-- **learning-path**: 問題から解決までのパスをトレース
-- **solution-candidates**: 問題の潜在的な解決策を検索
-- **graph-visualization**: グラフをMermaid/DOT形式でエクスポート
-- **node-details**: ノードの包括的な情報を取得
-- **related-nodes**: すべての接続されたノードを検索
-
-## 🛠️ 開発
-
-```bash
 # 依存関係をインストール
 npm install
 
 # 開発モードで実行
 npm run dev
 
-# プロダクション用にビルド
+# テストを実行
+npm test
+
+# プロダクションビルド
 npm run build
-
-# リンターを実行
-npm run lint
-
-# コードをフォーマット
-npm run format
 ```
-
-## 🤝 貢献
-
-貢献を歓迎します！詳細については[貢献ガイド](CONTRIBUTING.md)をご覧ください。
 
 ## 📄 ライセンス
 
-このプロジェクトはMITライセンスの下でライセンスされています - 詳細は[LICENSE](LICENSE)ファイルをご覧ください。
-
-## 🙏 謝辞
-
-- [Model Context Protocol](https://modelcontextprotocol.io)上に構築
-- 問題解決ツリーと科学的デバッグ手法に着想を得て
-- すべての貢献者とユーザーに感謝
-
----
-
-MCPコミュニティによって ❤️ を込めて作られました
+このプロジェクトはMITライセンスの下で公開されています。詳細は[LICENSE](LICENSE)をご覧ください。

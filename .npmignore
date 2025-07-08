@@ -42,6 +42,12 @@ coverage/
 # Test config
 jest.config.js
 *.test.ts
+vitest.config.ts
+
+# Test files in dist
+dist/**/__tests__/
+dist/**/*.test.js
+dist/**/*.test.d.ts
 
 # Dependencies
 node_modules/

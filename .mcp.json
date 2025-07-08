@@ -1,8 +1,5 @@
 {
   "mcpServers": {
-    "debug-iteration": {
-      "command": "mcp-server-debug-iteration"
-    },
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
