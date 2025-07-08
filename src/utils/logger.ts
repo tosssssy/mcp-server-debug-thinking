@@ -16,7 +16,7 @@ export class Logger {
     this.disableLogging = (process.env.DISABLE_DEBUG_LOGGING || '').toLowerCase() === 'true';
     this.level = this.disableLogging ? LogLevel.NONE : LogLevel.INFO;
     
-    // Allow log level override
+    // ログレベルのオーバーライドを許可
     const envLevel = process.env.DEBUG_LOG_LEVEL?.toUpperCase();
     if (envLevel && envLevel in LogLevel) {
       this.level = LogLevel[envLevel as keyof typeof LogLevel] as LogLevel;

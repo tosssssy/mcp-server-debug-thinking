@@ -7,22 +7,17 @@ import {
   ListToolsRequestSchema,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-import { GraphService } from './services/GraphService.js';
-import { 
+import { GraphService } from "./services/GraphService.js";
+import {
   ActionType,
   CreateAction,
   ConnectAction,
   QueryAction,
-  GraphAction
-} from './types/graphActions.js';
-import { createJsonResponse } from './utils/format.js';
-import { logger } from './utils/logger.js';
-import {
-  TOOL_NAME,
-  SERVER_NAME,
-  SERVER_VERSION,
-  ERROR_MESSAGES
-} from './constants.js';
+  GraphAction,
+} from "./types/graphActions.js";
+import { createJsonResponse } from "./utils/format.js";
+import { logger } from "./utils/logger.js";
+import { TOOL_NAME, SERVER_NAME, SERVER_VERSION, ERROR_MESSAGES } from "./constants.js";
 
 const DEBUG_THINKING_TOOL: Tool = {
   name: TOOL_NAME,
@@ -90,7 +85,16 @@ Data persists in ~/.debug-thinking-mcp/`,
       },
       type: {
         type: "string",
-        enum: ["decomposes", "hypothesizes", "tests", "produces", "learns", "contradicts", "supports", "solves"],
+        enum: [
+          "decomposes",
+          "hypothesizes",
+          "tests",
+          "produces",
+          "learns",
+          "contradicts",
+          "supports",
+          "solves",
+        ],
         description: "Type of relationship (for connect action)",
       },
       strength: {
@@ -111,7 +115,7 @@ Data persists in ~/.debug-thinking-mcp/`,
           "graph-visualization",
           "node-details",
           "related-nodes",
-          "pattern-match"
+          "pattern-match",
         ],
         description: "Type of query to perform (for query action)",
       },
@@ -134,7 +138,6 @@ Data persists in ~/.debug-thinking-mcp/`,
   },
 };
 
-
 const server = new Server(
   {
     name: SERVER_NAME,
@@ -144,7 +147,7 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
-  },
+  }
 );
 
 const graphService = new GraphService();
@@ -167,7 +170,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           nodeType: args.nodeType as any,
           content: args.content as string,
           parentId: args.parentId as string,
-          metadata: args.metadata as any
+          metadata: args.metadata as any,
         };
         return await graphService.create(graphAction as CreateAction);
 
@@ -178,7 +181,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           to: args.to as string,
           type: args.type as any,
           strength: args.strength as number,
-          metadata: args.metadata as any
+          metadata: args.metadata as any,
         };
         return await graphService.connect(graphAction as ConnectAction);
 
@@ -186,32 +189,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         graphAction = {
           action: ActionType.QUERY,
           type: args.queryType as any,
-          parameters: args.parameters as any
+          parameters: args.parameters as any,
         };
         return await graphService.query(graphAction as QueryAction);
 
       default:
-        return createJsonResponse({
-          error: `Unknown action: ${action}`,
-          validActions: Object.values(ActionType),
-        }, true);
+        return createJsonResponse(
+          {
+            error: `Unknown action: ${action}`,
+            validActions: Object.values(ActionType),
+          },
+          true
+        );
     }
   }
 
-  return createJsonResponse({
-    error: `Unknown tool: ${request.params.name}`,
-  }, true);
+  return createJsonResponse(
+    {
+      error: `Unknown tool: ${request.params.name}`,
+    },
+    true
+  );
 });
 
 async function runServer() {
-  // Initialize the graph service
+  // グラフサービスを初期化
   await graphService.initialize();
-  
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
   logger.info("Graph-based Debug MCP Server running on stdio");
 
-  // Handle graceful shutdown
+  // 正常なシャットダウンを処理
   process.on("SIGINT", async () => {
     logger.info("\n📁 Saving graph data before shutdown...");
     await graphService.saveGraph();

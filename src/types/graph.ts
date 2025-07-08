@@ -1,20 +1,37 @@
-// Graph-based debugging structure types
+/**
+ * デバッグプロセスをグラフ構造で表現するための型定義
+ * 問題解決の流れをノードとエッジでモデル化
+ */
 
-// Node types representing different elements in the debugging process
+/**
+ * ノードタイプ: デバッグプロセスの各段階を表現
+ * - problem: デバッグ対象の問題/エラー
+ * - hypothesis: 問題の原因に関する仮説
+ * - experiment: 仮説を検証するための実験
+ * - observation: 実験結果の観察
+ * - learning: 観察から得た知見
+ * - solution: 問題の解決策
+ */
 export type NodeType = 'problem' | 'hypothesis' | 'experiment' | 'observation' | 'learning' | 'solution';
 
-// Edge types representing relationships between nodes
+/**
+ * エッジタイプ: ノード間の意味的な関係を定義
+ * 各タイプはデバッグプロセスの自然な流れを表現
+ */
 export type EdgeType = 
-  | 'decomposes'    // Problem -> SubProblem
-  | 'hypothesizes'  // Problem -> Hypothesis
-  | 'tests'         // Hypothesis -> Experiment
-  | 'produces'      // Experiment -> Observation
-  | 'learns'        // Observation -> Learning
-  | 'contradicts'   // Evidence -> Hypothesis (negative)
-  | 'supports'      // Evidence -> Hypothesis (positive)
-  | 'solves';       // Solution -> Problem
+  | 'decomposes'    // 問題をより小さなサブ問題に分解
+  | 'hypothesizes'  // 問題に対して仮説を立てる
+  | 'tests'         // 仮説を検証する実験を実施
+  | 'produces'      // 実験が観察結果を生成
+  | 'learns'        // 観察結果から学習を得る
+  | 'contradicts'   // 証拠が仮説を否定/矛盾
+  | 'supports'      // 証拠が仮説を支持/裏付け
+  | 'solves';       // 解決策が問題を解決
 
-// Base node structure
+/**
+ * 基本ノードインターフェース
+ * すべてのノードタイプが共通で持つプロパティ
+ */
 export interface Node {
   id: string;
   type: NodeType;
@@ -22,21 +39,24 @@ export interface Node {
   metadata: {
     createdAt: Date;
     updatedAt: Date;
-    confidence?: number;  // 0-100, applicable for hypothesis and solution
+    confidence?: number;  // 信頼度(0-100): 仮説や解決策の確実性
     status?: 'open' | 'investigating' | 'solved' | 'abandoned';
     tags: string[];
-    // Additional metadata based on node type
+    // ノードタイプ固有の拡張フィールド用
     [key: string]: any;
   };
 }
 
-// Edge structure representing relationships
+/**
+ * エッジインターフェース
+ * ノード間の方向性を持つ関係を表現
+ */
 export interface Edge {
   id: string;
   type: EdgeType;
-  from: string;  // Node ID
-  to: string;    // Node ID
-  strength: number;  // 0-1, representing relationship strength
+  from: string;  // 出発ノードのID
+  to: string;    // 到達ノードのID
+  strength: number;  // 関係の強度(0-1): 1に近いほど強い関係
   metadata?: {
     reasoning?: string;
     evidence?: string;
@@ -45,11 +65,14 @@ export interface Edge {
   };
 }
 
-// The main graph structure
+/**
+ * デバッググラフ全体の構造
+ * ノードとエッジのMap、ルート問題、メタ情報を保持
+ */
 export interface DebugGraph {
   nodes: Map<string, Node>;
   edges: Map<string, Edge>;
-  roots: string[];  // Root problem node IDs
+  roots: string[];  // ルート問題ノードのIDリスト(親を持たない問題)
   metadata: {
     createdAt: Date;
     lastModified: Date;
@@ -57,7 +80,13 @@ export interface DebugGraph {
   };
 }
 
-// Specific node type interfaces for better type safety
+/**
+ * ノードタイプ別の詳細インターフェース
+ * 各ノードタイプが持つ固有のメタデータを型安全に定義
+ */
+/**
+ * 問題ノード: デバッグ対象のエラーや不具合
+ */
 export interface ProblemNode extends Node {
   type: 'problem';
   metadata: Node['metadata'] & {
@@ -71,15 +100,21 @@ export interface ProblemNode extends Node {
   };
 }
 
+/**
+ * 仮説ノード: 問題の原因に関する推測
+ */
 export interface HypothesisNode extends Node {
   type: 'hypothesis';
   metadata: Node['metadata'] & {
-    confidence: number;  // Required for hypothesis
+    confidence: number;  // 信頼度(必須): 仮説の確からしさ
     assumptions?: string[];
     testable: boolean;
   };
 }
 
+/**
+ * 実験ノード: 仮説を検証するためのアクション
+ */
 export interface ExperimentNode extends Node {
   type: 'experiment';
   metadata: Node['metadata'] & {
@@ -90,6 +125,9 @@ export interface ExperimentNode extends Node {
   };
 }
 
+/**
+ * 観察ノード: 実験の結果として得られたデータ
+ */
 export interface ObservationNode extends Node {
   type: 'observation';
   metadata: Node['metadata'] & {
@@ -99,15 +137,21 @@ export interface ObservationNode extends Node {
   };
 }
 
+/**
+ * 学習ノード: デバッグプロセスから得た知見や教訓
+ */
 export interface LearningNode extends Node {
   type: 'learning';
   metadata: Node['metadata'] & {
-    applicability: string;  // When/where this learning applies
+    applicability: string;  // 適用範囲: この学習が有効な状況や条件
     confidence: number;
     category?: 'pattern' | 'anti-pattern' | 'best-practice' | 'insight';
   };
 }
 
+/**
+ * 解決策ノード: 問題を解決する具体的な方法
+ */
 export interface SolutionNode extends Node {
   type: 'solution';
   metadata: Node['metadata'] & {
@@ -118,7 +162,10 @@ export interface SolutionNode extends Node {
   };
 }
 
-// Type guards
+/**
+ * 型ガード関数群
+ * ノードが特定の型であることを安全にチェック
+ */
 export function isProblemNode(node: Node): node is ProblemNode {
   return node.type === 'problem';
 }

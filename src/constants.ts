@@ -1,20 +1,20 @@
-// File paths
+// ファイルパス
 export const DATA_DIR_NAME = '.debug-thinking-mcp';
 export const METADATA_FILE = 'metadata.json';
 
-// JSONL file paths
+// JSONLファイルパス
 export const SESSIONS_JSONL_FILE = 'sessions.jsonl';
 export const ERROR_PATTERNS_JSONL_FILE = 'error-patterns.jsonl';
 export const SUCCESSFUL_FIXES_JSONL_FILE = 'successful-fixes.jsonl';
 
-// Search defaults
+// 検索デフォルト
 export const DEFAULT_SEARCH_LIMIT = 10;
 export const MAX_SEARCH_LIMIT = 50;
 export const MIN_SEARCH_LIMIT = 1;
 export const DEFAULT_SEARCH_MODE = 'fuzzy';
 export const DEFAULT_KEYWORD_LOGIC = 'OR';
 
-// Scoring weights
+// スコアリングの重み
 export const ERROR_TYPE_EXACT_MATCH_SCORE = 0.4;
 export const ERROR_TYPE_PARTIAL_MATCH_SCORE = 0.25;
 export const ERROR_TYPE_SIMILARITY_THRESHOLD = 0.7;
@@ -30,7 +30,7 @@ export const HIGH_SUCCESS_RATE_THRESHOLD = 0.8;
 export const HIGH_SUCCESS_RATE_BOOST = 0.1;
 export const HIGH_SIMILARITY_THRESHOLD = 0.7;
 
-// Error messages
+// エラーメッセージ
 export const ERROR_MESSAGES = {
   NO_ACTIVE_SESSION: 'No active session',
   SESSION_NOT_FOUND: 'Session not found',
@@ -43,7 +43,7 @@ export const ERROR_MESSAGES = {
   AT_LEAST_ONE_FIELD_REQUIRED: 'At least one of: problem, hypothesis, experiment, or result must be provided',
 };
 
-// Tool metadata
+// ツールメタデータ
 export const TOOL_NAME = 'debug_thinking';
 export const SERVER_NAME = 'debug-thinking-mcp-server';
 export const SERVER_VERSION = '1.0.0';

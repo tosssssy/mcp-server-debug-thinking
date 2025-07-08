@@ -58,7 +58,8 @@ export class GraphService {
         this.graph = loadedGraph;
         logger.success(`Loaded graph with ${this.graph.nodes.size} nodes and ${this.graph.edges.size} edges`);
         
-        // Build error type index
+        // 高速検索のためのエラータイプ別インデックスを構築
+        // 類似エラーの検索パフォーマンスを向上させる
         this.buildErrorTypeIndex();
       }
     } catch (error) {
@@ -67,13 +68,17 @@ export class GraphService {
     }
   }
 
-  // CREATE action implementation
+  /**
+   * CREATEアクション実装
+   * 新しいノードを作成し、親ノードが指定されていれば自動的に適切なエッジを生成
+   * 問題ノードの場合は類似問題も自動検索して返す
+   */
   async create(action: CreateAction) {
     try {
       const nodeId = uuidv4();
       const now = new Date();
       
-      // Create base node
+      // ベースノード構造を作成（全ノードタイプ共通の基本情報）
       const node: Node = {
         id: nodeId,
         type: action.nodeType,
@@ -86,13 +91,15 @@ export class GraphService {
         }
       };
 
-      // Add type-specific metadata
+      // ノードタイプに応じた必須メタデータを自動設定
+      // (例: 問題ノードにstatus、仮説ノードにconfidence等)
       this.enrichNodeMetadata(node);
 
-      // Add node to graph
+      // ノードをグラフの内部Map構造に追加
       this.graph.nodes.set(nodeId, node);
 
-      // Handle parent relationship
+      // 親ノードとの関係を自動判定して適切なエッジを作成
+      // (例: 問題→仮説なら'hypothesizes'エッジ)
       let edgeId: string | undefined;
       if (action.parentId) {
         const parentNode = this.graph.nodes.get(action.parentId);
@@ -103,7 +110,7 @@ export class GraphService {
           }, true);
         }
 
-        // Determine edge type
+        // 親ノードタイプと子ノードタイプから適切なエッジタイプを自動判定
         const edgeType = getAutoEdgeType(parentNode.type, action.nodeType);
         if (edgeType) {
           const edge = this.createEdge(action.parentId, nodeId, edgeType);
@@ -111,21 +118,22 @@ export class GraphService {
           edgeId = edge.id;
         }
       } else if (action.nodeType === 'problem') {
-        // Add to roots if it's a root problem
+        // 親が指定されていない問題ノードはルート問題として登録
         this.graph.roots.push(nodeId);
         (node as ProblemNode).metadata.isRoot = true;
       }
 
-      // Update graph metadata
+      // グラフ全体の最終更新日時を記録
       this.graph.metadata.lastModified = now;
 
-      // Save to storage
+      // ノードとエッジを永続化ストレージに保存
       await this.storage.saveNode(node);
       if (edgeId) {
         await this.storage.saveEdge(this.graph.edges.get(edgeId)!);
       }
 
-      // Update error type index for problem nodes
+      // 問題ノードの場合、エラータイプ別インデックスを更新
+      // (例: 'TypeError'などを抽出して分類)
       if (action.nodeType === 'problem') {
         const errorType = this.extractErrorType(action.content) || 'other';
         if (!this.errorTypeIndex.has(errorType)) {
@@ -135,10 +143,10 @@ export class GraphService {
         logger.debug(`Added node ${nodeId} to error type index: ${errorType}`);
       }
 
-      // Generate suggestions
+      // ノードタイプに応じた次のアクション提案を生成
       const suggestions = await this.generateSuggestions(node);
 
-      // For problem nodes, automatically find similar problems
+      // 問題ノードの場合、過去の類似問題とその解決策を自動検索
       let similarProblems: CreateResponse['similarProblems'];
       if (action.nodeType === 'problem') {
         const similarResult = await this.findSimilarProblems({
@@ -147,7 +155,7 @@ export class GraphService {
           minSimilarity: 0.3
         });
         
-        // Only include if there are similar problems found
+        // 類似問題が見つかった場合のみレスポンスに含める
         if (similarResult.problems.length > 0) {
           similarProblems = similarResult.problems.map(p => ({
             nodeId: p.nodeId,
@@ -177,7 +185,11 @@ export class GraphService {
     }
   }
 
-  // CONNECT action implementation
+  /**
+   * CONNECTアクション実装
+   * 既存の2つのノード間に明示的な関係（エッジ）を作成
+   * 矛盾する関係（supports vs contradicts等）を自動検出
+   */
   async connect(action: ConnectAction) {
     try {
       const fromNode = this.graph.nodes.get(action.from);
@@ -190,10 +202,12 @@ export class GraphService {
         }, true);
       }
 
-      // Check for conflicts
+      // 既存の関係と矛盾するエッジがないかチェック
+      // (例: 同じノード間に'supports'と'contradicts'が共存しないように)
       const conflicts = this.checkForConflicts(action);
       
-      // Create edge
+      // 指定されたパラメータでエッジを作成
+      // strengthは0-1の範囲で関係の強さを表現
       const edge = this.createEdge(
         action.from,
         action.to,
@@ -204,10 +218,10 @@ export class GraphService {
 
       this.graph.edges.set(edge.id, edge);
       
-      // Update graph metadata
+      // グラフ全体の最終更新日時を記録
       this.graph.metadata.lastModified = new Date();
 
-      // Save to storage
+      // ノードとエッジを永続化ストレージに保存
       await this.storage.saveEdge(edge);
 
       const response: ConnectResponse = {
@@ -229,7 +243,11 @@ export class GraphService {
     }
   }
 
-  // QUERY action implementation
+  /**
+   * QUERYアクション実装
+   * グラフ内のデータを様々な方法で検索・分析
+   * 実行時間を計測してパフォーマンス情報も返す
+   */
   async query(action: QueryAction) {
     const startTime = Date.now();
     
@@ -287,7 +305,16 @@ export class GraphService {
     }
   }
 
-  // Helper methods
+  /**
+   * ヘルパーメソッド
+   * 内部処理用のユーティリティ関数群
+   */
+  /**
+   * ノードタイプに応じたデフォルトメタデータを自動設定
+   * - 問題ノード: status='open', isRoot=false
+   * - 仮説ノード: confidence=50(未設定時), testable=true
+   * - 学習ノード: confidence=70(未設定時)
+   */
   private enrichNodeMetadata(node: Node): void {
     switch (node.type) {
       case 'problem':
@@ -308,6 +335,11 @@ export class GraphService {
     }
   }
 
+  /**
+   * エッジオブジェクトを作成
+   * strengthを自動的に0-1の範囲に正規化
+   * ユニークIDとタイムスタンプを自動付与
+   */
   private createEdge(
     from: string,
     to: string,
@@ -328,12 +360,19 @@ export class GraphService {
     };
   }
 
+  /**
+   * 関係の矛盾をチェック
+   * 'supports'と'contradicts'のような相反する関係が
+   * 同じノード間に存在しないよう検証
+   * @returns 矛盾するエッジの配列
+   */
   private checkForConflicts(action: ConnectAction): Edge[] {
     const conflicts: Edge[] = [];
     
-    // Check for contradicting edges
+    // 'contradicts'エッジを作成しようとした場合、
+    // 同じノード間に既存の'supports'エッジがないか確認
     if (action.type === 'contradicts') {
-      // Find any 'supports' edges between the same nodes
+      // 同一方向の'supports'関係を検索
       for (const edge of this.graph.edges.values()) {
         if (edge.type === 'supports' && 
             edge.from === action.from && 
@@ -342,7 +381,7 @@ export class GraphService {
         }
       }
     } else if (action.type === 'supports') {
-      // Find any 'contradicts' edges between the same nodes
+      // 同一方向の'contradicts'関係を検索
       for (const edge of this.graph.edges.values()) {
         if (edge.type === 'contradicts' && 
             edge.from === action.from && 
@@ -355,11 +394,16 @@ export class GraphService {
     return conflicts;
   }
 
+  /**
+   * ノードタイプに応じた次のアクション提案を生成
+   * - 問題ノード: 関連する問題のIDリスト
+   * - 仮説ノード: 推奨される実験方法
+   */
   private async generateSuggestions(node: Node): Promise<any> {
     const suggestions: any = {};
     
     if (node.type === 'problem') {
-      // Find similar problems
+      // 関連する問題を最大3件まで検索
       const similar = await this.findSimilarProblems({
         pattern: node.content,
         limit: 3
@@ -368,7 +412,7 @@ export class GraphService {
         suggestions.relatedProblems = similar.problems.map(p => p.nodeId);
       }
     } else if (node.type === 'hypothesis') {
-      // Suggest experiments
+      // 仮説を検証するための標準的な実験手法を提案
       suggestions.recommendedExperiments = [
         'Test the hypothesis in isolation',
         'Create a minimal reproducible example',
@@ -379,26 +423,35 @@ export class GraphService {
     return suggestions;
   }
 
-  // Query implementations
+  /**
+   * クエリ実装メソッド群
+   * 様々な検索・分析機能の実装
+   */
+  /**
+   * 類似問題検索
+   * エラータイプ別インデックスを活用して高速に類似問題を検索
+   * 類似度計算はエラータイプ、キーフレーズ、単語ベースで実施
+   * 解決済み問題を優先的に返す
+   */
   private async findSimilarProblems(params: any): Promise<SimilarProblemsResult> {
     const problems: any[] = [];
     const pattern = params?.pattern || '';
     const minSimilarity = params?.minSimilarity || 0.3;
     const errorType = this.extractErrorType(pattern);
     
-    // 検索対象を絞り込む
+    // エラータイプ別インデックスを使用して検索対象を効率的に絞り込む
     let candidateNodeIds: Set<string>;
     
     if (errorType && this.errorTypeIndex.has(errorType)) {
-      // 同じエラータイプのノードのみ
+      // 同一エラータイプの問題ノードのみを検索対象に
       candidateNodeIds = this.errorTypeIndex.get(errorType)!;
       logger.debug(`Searching ${candidateNodeIds.size} nodes with error type: ${errorType}`);
     } else if (!errorType && this.errorTypeIndex.has('other')) {
-      // エラータイプが不明な場合は 'other' カテゴリ
+      // エラータイプが抽出できない場合は 'other' カテゴリを検索
       candidateNodeIds = this.errorTypeIndex.get('other')!;
       logger.debug(`Searching ${candidateNodeIds.size} nodes without specific error type`);
     } else {
-      // インデックスが空の場合は全問題ノードをスキャン（フォールバック）
+      // インデックスが未構築の場合は全問題ノードを総当たり（フォールバック）
       candidateNodeIds = new Set();
       for (const [nodeId, node] of this.graph.nodes) {
         if (node.type === 'problem') {
@@ -408,14 +461,14 @@ export class GraphService {
       logger.debug(`Fallback: searching all ${candidateNodeIds.size} problem nodes`);
     }
     
-    // 絞り込まれた候補に対してのみ類似度計算
+    // 絞り込まれた候補に対して類似度計算を実施
     for (const nodeId of candidateNodeIds) {
       const node = this.graph.nodes.get(nodeId);
       if (!node || node.type !== 'problem') continue;
       
       const similarity = this.calculateSimilarity(pattern, node.content);
       
-      // Only include problems with sufficient similarity
+      // 最小類似度以上の問題のみを結果に含める
       if (similarity >= minSimilarity) {
         const solutions = this.findSolutionsForProblem(node.id);
         problems.push({
@@ -428,13 +481,13 @@ export class GraphService {
       }
     }
     
-    // Sort by similarity, prioritizing solved problems
+    // 結果をソート: 1.解決済み問題を優先 2.類似度の高い順
     problems.sort((a, b) => {
-      // Prioritize solved problems
+      // 解決済み(solved)の問題を優先表示
       if (a.status === 'solved' && b.status !== 'solved') return -1;
       if (b.status === 'solved' && a.status !== 'solved') return 1;
       
-      // Then sort by similarity
+      // ステータスが同じ場合は類似度の降順でソート
       return b.similarity - a.similarity;
     });
     
@@ -443,6 +496,12 @@ export class GraphService {
     };
   }
 
+  /**
+   * 特定の問題に対する解決策を検索
+   * 'solves'エッジを追跡して関連する解決策ノードを収集
+   * @param problemId 問題ノードのID
+   * @returns 解決策情報の配列(検証済みフラグ付き)
+   */
   private findSolutionsForProblem(problemId: string): any[] {
     const solutions: any[] = [];
     
@@ -462,31 +521,43 @@ export class GraphService {
     return solutions;
   }
 
+  /**
+   * エラーメッセージからエラータイプを抽出
+   * 正規表現で'TypeError', 'ReferenceError'等を検出
+   * @returns エラータイプ名(小文字)またはnull
+   */
   private extractErrorType(content: string): string | null {
     const match = content.toLowerCase().match(this.ERROR_TYPE_REGEX);
     return match ? match[0].toLowerCase() : null;
   }
 
+  /**
+   * 2つの問題テキストの類似度を計算(0-1の範囲)
+   * 計算要素:
+   * - エラータイプの一致: 40%
+   * - 主要エラーフレーズの一致: 30%
+   * - 単語ベースの一致: 30%
+   */
   private calculateSimilarity(pattern: string, content: string): number {
     const p1 = pattern.toLowerCase();
     const p2 = content.toLowerCase();
     
-    // Extract error types (e.g., TypeError, ReferenceError)
+    // 両方のテキストからエラータイプを抽出して比較準備
     const errorType1 = this.extractErrorType(pattern);
     const errorType2 = this.extractErrorType(content);
     
     let score = 0;
     
-    // Error type match (40%)
+    // スコア計算: エラータイプの一致度(40%の重み)
     if (errorType1 && errorType2) {
       if (errorType1 === errorType2) {
         score += 0.4;
       } else {
-        score += 0.1; // Partial credit for different error types
+        score += 0.1; // 異なるエラータイプでも部分点を付与
       }
     }
     
-    // Extract key error phrases
+    // 高頻度エラーフレーズのパターン定義
     const keyPhrases = [
       /cannot\s+read\s+property/i,
       /cannot\s+access/i,
@@ -498,13 +569,13 @@ export class GraphService {
       /permission\s+denied/i
     ];
     
-    // Key phrase similarity (30%)
+    // スコア計算: 主要フレーズの一致度(30%の重み)
     let phraseMatches = 0;
     for (const phrase of keyPhrases) {
       const match1 = phrase.test(p1);
-      phrase.lastIndex = 0; // Reset regex state
+      phrase.lastIndex = 0; // 正規表現のlastIndexをリセット(gフラグ対策)
       const match2 = phrase.test(p2);
-      phrase.lastIndex = 0; // Reset regex state
+      phrase.lastIndex = 0; // 正規表現のlastIndexをリセット(gフラグ対策)
       if (match1 && match2) {
         phraseMatches++;
       }
@@ -513,7 +584,8 @@ export class GraphService {
       score += (phraseMatches / keyPhrases.length) * 0.3;
     }
     
-    // Word-based similarity (30%)
+    // スコア計算: 共通単語の割合(30%の重み)
+    // 2文字以下の単語はノイズとして除外
     const words1 = p1.split(/\s+/).filter(w => w.length > 2);
     const words2 = p2.split(/\s+/).filter(w => w.length > 2);
     const commonWords = words1.filter(w => words2.includes(w));
@@ -524,9 +596,14 @@ export class GraphService {
     return Math.min(score, 1.0);
   }
 
+  /**
+   * 成功したデバッグパターンを分析
+   * 問題から解決策に至るパスを分析してパターンを抽出
+   * TODO: 実装予定
+   */
   private async findSuccessfulPatterns(params: any): Promise<SuccessfulPatternsResult> {
-    // Implementation would analyze paths from problem to solution
-    // For now, return empty result
+    // TODO: 問題→仮説→実験→観察→解決策のパス分析を実装
+    // 現在は空配列を返す（実装予定）
     return { patterns: [] };
   }
 
@@ -696,12 +773,12 @@ export class GraphService {
     const regex = new RegExp(pattern, 'i');
     
     for (const node of this.graph.nodes.values()) {
-      // Filter by node type if specified
+      // ノードタイプが指定されている場合は、一致しないノードをスキップ
       if (nodeTypes && !nodeTypes.includes(node.type)) {
         continue;
       }
       
-      // Check if content matches pattern
+      // コンテンツ本文がパターンにマッチ: 関連度1.0
       if (regex.test(node.content)) {
         matches.push({
           node,
@@ -724,11 +801,22 @@ export class GraphService {
     };
   }
 
-  // Public methods for session management
+  /**
+   * セッション管理用パブリックメソッド
+   */
+  /**
+   * グラフメタデータをストレージに保存
+   * シャットダウン時などに呼び出される
+   */
   async saveGraph(): Promise<void> {
     await this.storage.saveGraphMetadata(this.graph);
   }
 
+  /**
+   * エラータイプ別インデックスの構築
+   * すべての問題ノードをスキャンしてエラータイプ別に分類
+   * エラータイプが不明な場合は'other'カテゴリに分類
+   */
   private buildErrorTypeIndex(): void {
     this.errorTypeIndex.clear();
     
