@@ -85,6 +85,18 @@ export interface CreateResponse {
     possibleHypotheses?: string[];
     recommendedExperiments?: string[];
   };
+  // New field for similar problems with their solutions
+  similarProblems?: Array<{
+    nodeId: string;
+    content: string;
+    similarity: number;
+    status?: 'open' | 'investigating' | 'solved' | 'abandoned';
+    solutions: Array<{
+      nodeId: string;
+      content: string;
+      verified: boolean;
+    }>;
+  }>;
 }
 
 export interface ConnectResponse {
@@ -110,6 +122,7 @@ export interface SimilarProblemsResult {
     nodeId: string;
     content: string;
     similarity: number;  // 0-1
+    status?: 'open' | 'investigating' | 'solved' | 'abandoned';
     solutions?: Array<{
       nodeId: string;
       content: string;

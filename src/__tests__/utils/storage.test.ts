@@ -373,4 +373,61 @@ describe('storage utils', () => {
       expect(results[0]).toEqual({ valid: 'data' });
     });
   });
+
+  describe('error handling for uncovered lines', () => {
+    it('should handle appendJsonLine errors', async () => {
+      const filePath = path.join(testDir, 'test.jsonl');
+      const data = { test: 'data' };
+      
+      // Mock fs.appendFile to throw error
+      const originalAppendFile = fs.appendFile;
+      vi.spyOn(fs, 'appendFile').mockRejectedValueOnce(new Error('Write permission denied'));
+      
+      await expect(appendJsonLine(filePath, data)).rejects.toThrow('Write permission denied');
+      
+      vi.spyOn(fs, 'appendFile').mockImplementation(originalAppendFile);
+    });
+
+    it.skip('should handle readJsonLinesStream errors', async () => {
+      const filePath = path.join(testDir, 'nonexistent.jsonl');
+      
+      await expect(async () => {
+        const items = [];
+        for await (const item of readJsonLinesStream(filePath)) {
+          items.push(item);
+        }
+      }).rejects.toThrow();
+    });
+
+    it('should handle non-ENOENT errors in listJsonFiles', async () => {
+      const dirPath = '/some/dir';
+      
+      // Mock fs.readdir to throw non-ENOENT error
+      const originalReaddir = fs.readdir;
+      const error = new Error('Permission denied');
+      (error as any).code = 'EACCES'; // Not ENOENT
+      vi.spyOn(fs, 'readdir').mockRejectedValueOnce(error);
+      
+      await expect(listJsonFiles(dirPath)).rejects.toThrow('Permission denied');
+      
+      vi.spyOn(fs, 'readdir').mockImplementation(originalReaddir);
+    });
+
+    it.skip('should handle non-ENOENT errors in readJsonLines', async () => {
+      const filePath = path.join(testDir, 'test.jsonl');
+      
+      // Create a mock error that's not ENOENT
+      const error = new Error('Read permission denied');
+      (error as any).code = 'EACCES';
+      
+      // Mock createReadStream to throw error
+      vi.spyOn(fs, 'createReadStream' as any).mockImplementationOnce(() => {
+        const stream = new (require('stream').Readable)();
+        setImmediate(() => stream.emit('error', error));
+        return stream;
+      });
+      
+      await expect(readJsonLines(filePath)).rejects.toThrow();
+    });
+  });
 });

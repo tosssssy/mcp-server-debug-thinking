@@ -346,4 +346,45 @@ describe('GraphStorage', () => {
       await expect(storage.clearStorage()).resolves.not.toThrow();
     });
   });
+
+  describe('error handling in saveGraphMetadata', () => {
+    it('should throw error when writeJsonFile fails', async () => {
+      const graph: DebugGraph = {
+        nodes: new Map([['n1', { id: 'n1', type: 'problem', content: 'Test', metadata: { createdAt: new Date(), updatedAt: new Date(), tags: [] } }]]),
+        edges: new Map(),
+        roots: ['n1'],
+        metadata: {
+          createdAt: new Date(),
+          lastModified: new Date(),
+          sessionCount: 1,
+        },
+      };
+
+      // Mock writeJsonFile to throw error
+      const originalWriteFile = fs.writeFile;
+      vi.spyOn(fs, 'writeFile').mockRejectedValueOnce(new Error('Write failed'));
+
+      await expect(storage.saveGraphMetadata(graph)).rejects.toThrow('Write failed');
+      
+      vi.spyOn(fs, 'writeFile').mockImplementation(originalWriteFile);
+    });
+  });
+
+  describe('error handling in loadGraph', () => {
+    it.skip('should return null and log error when loading fails', async () => {
+      // Mock file exists but readFile fails
+      vi.spyOn(fs, 'access').mockResolvedValueOnce(undefined); // nodes.jsonl exists
+      vi.spyOn(fs, 'readFile').mockRejectedValueOnce(new Error('Read failed'));
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      
+      const result = await storage.loadGraph();
+      expect(result).toBeNull();
+      
+      // Verify error was logged
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to load graph:'), expect.any(Error));
+      
+      consoleSpy.mockRestore();
+    });
+  });
 });

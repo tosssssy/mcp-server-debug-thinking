@@ -33,6 +33,8 @@ import { createJsonResponse } from '../utils/format.js';
 export class GraphService {
   private graph: DebugGraph;
   private storage: GraphStorage;
+  private errorTypeIndex: Map<string, Set<string>> = new Map();
+  private readonly ERROR_TYPE_REGEX = /\b(type|reference|syntax|range|eval|uri)\s*error\b/i;
 
   constructor() {
     this.graph = {
@@ -55,6 +57,9 @@ export class GraphService {
       if (loadedGraph) {
         this.graph = loadedGraph;
         logger.success(`Loaded graph with ${this.graph.nodes.size} nodes and ${this.graph.edges.size} edges`);
+        
+        // Build error type index
+        this.buildErrorTypeIndex();
       }
     } catch (error) {
       logger.error('Failed to initialize GraphService:', error);
@@ -120,15 +125,47 @@ export class GraphService {
         await this.storage.saveEdge(this.graph.edges.get(edgeId)!);
       }
 
+      // Update error type index for problem nodes
+      if (action.nodeType === 'problem') {
+        const errorType = this.extractErrorType(action.content) || 'other';
+        if (!this.errorTypeIndex.has(errorType)) {
+          this.errorTypeIndex.set(errorType, new Set());
+        }
+        this.errorTypeIndex.get(errorType)!.add(nodeId);
+        logger.debug(`Added node ${nodeId} to error type index: ${errorType}`);
+      }
+
       // Generate suggestions
       const suggestions = await this.generateSuggestions(node);
+
+      // For problem nodes, automatically find similar problems
+      let similarProblems: CreateResponse['similarProblems'];
+      if (action.nodeType === 'problem') {
+        const similarResult = await this.findSimilarProblems({
+          pattern: action.content,
+          limit: 5,
+          minSimilarity: 0.3
+        });
+        
+        // Only include if there are similar problems found
+        if (similarResult.problems.length > 0) {
+          similarProblems = similarResult.problems.map(p => ({
+            nodeId: p.nodeId,
+            content: p.content,
+            similarity: p.similarity,
+            status: p.status,
+            solutions: p.solutions || []
+          }));
+        }
+      }
 
       const response: CreateResponse = {
         success: true,
         nodeId,
         edgeId,
         message: `Created ${action.nodeType} node`,
-        suggestions
+        suggestions,
+        similarProblems
       };
       return createJsonResponse(response);
     } catch (error) {
@@ -345,22 +382,61 @@ export class GraphService {
   // Query implementations
   private async findSimilarProblems(params: any): Promise<SimilarProblemsResult> {
     const problems: any[] = [];
-    const pattern = params?.pattern?.toLowerCase() || '';
+    const pattern = params?.pattern || '';
+    const minSimilarity = params?.minSimilarity || 0.3;
+    const errorType = this.extractErrorType(pattern);
     
-    for (const node of this.graph.nodes.values()) {
-      if (node.type === 'problem' && node.content.toLowerCase().includes(pattern)) {
+    // 検索対象を絞り込む
+    let candidateNodeIds: Set<string>;
+    
+    if (errorType && this.errorTypeIndex.has(errorType)) {
+      // 同じエラータイプのノードのみ
+      candidateNodeIds = this.errorTypeIndex.get(errorType)!;
+      logger.debug(`Searching ${candidateNodeIds.size} nodes with error type: ${errorType}`);
+    } else if (!errorType && this.errorTypeIndex.has('other')) {
+      // エラータイプが不明な場合は 'other' カテゴリ
+      candidateNodeIds = this.errorTypeIndex.get('other')!;
+      logger.debug(`Searching ${candidateNodeIds.size} nodes without specific error type`);
+    } else {
+      // インデックスが空の場合は全問題ノードをスキャン（フォールバック）
+      candidateNodeIds = new Set();
+      for (const [nodeId, node] of this.graph.nodes) {
+        if (node.type === 'problem') {
+          candidateNodeIds.add(nodeId);
+        }
+      }
+      logger.debug(`Fallback: searching all ${candidateNodeIds.size} problem nodes`);
+    }
+    
+    // 絞り込まれた候補に対してのみ類似度計算
+    for (const nodeId of candidateNodeIds) {
+      const node = this.graph.nodes.get(nodeId);
+      if (!node || node.type !== 'problem') continue;
+      
+      const similarity = this.calculateSimilarity(pattern, node.content);
+      
+      // Only include problems with sufficient similarity
+      if (similarity >= minSimilarity) {
         const solutions = this.findSolutionsForProblem(node.id);
         problems.push({
           nodeId: node.id,
           content: node.content,
-          similarity: this.calculateSimilarity(pattern, node.content),
+          similarity,
+          status: (node as ProblemNode).metadata.status,
           solutions
         });
       }
     }
     
-    // Sort by similarity
-    problems.sort((a, b) => b.similarity - a.similarity);
+    // Sort by similarity, prioritizing solved problems
+    problems.sort((a, b) => {
+      // Prioritize solved problems
+      if (a.status === 'solved' && b.status !== 'solved') return -1;
+      if (b.status === 'solved' && a.status !== 'solved') return 1;
+      
+      // Then sort by similarity
+      return b.similarity - a.similarity;
+    });
     
     return {
       problems: problems.slice(0, params?.limit || 10)
@@ -386,12 +462,66 @@ export class GraphService {
     return solutions;
   }
 
+  private extractErrorType(content: string): string | null {
+    const match = content.toLowerCase().match(this.ERROR_TYPE_REGEX);
+    return match ? match[0].toLowerCase() : null;
+  }
+
   private calculateSimilarity(pattern: string, content: string): number {
-    // Simple similarity calculation
-    const words1 = pattern.toLowerCase().split(/\s+/);
-    const words2 = content.toLowerCase().split(/\s+/);
-    const common = words1.filter(w => words2.includes(w));
-    return common.length / Math.max(words1.length, words2.length);
+    const p1 = pattern.toLowerCase();
+    const p2 = content.toLowerCase();
+    
+    // Extract error types (e.g., TypeError, ReferenceError)
+    const errorType1 = this.extractErrorType(pattern);
+    const errorType2 = this.extractErrorType(content);
+    
+    let score = 0;
+    
+    // Error type match (40%)
+    if (errorType1 && errorType2) {
+      if (errorType1 === errorType2) {
+        score += 0.4;
+      } else {
+        score += 0.1; // Partial credit for different error types
+      }
+    }
+    
+    // Extract key error phrases
+    const keyPhrases = [
+      /cannot\s+read\s+property/i,
+      /cannot\s+access/i,
+      /is\s+not\s+defined/i,
+      /is\s+not\s+a\s+function/i,
+      /undefined\s+or\s+null/i,
+      /maximum\s+call\s+stack/i,
+      /out\s+of\s+memory/i,
+      /permission\s+denied/i
+    ];
+    
+    // Key phrase similarity (30%)
+    let phraseMatches = 0;
+    for (const phrase of keyPhrases) {
+      const match1 = phrase.test(p1);
+      phrase.lastIndex = 0; // Reset regex state
+      const match2 = phrase.test(p2);
+      phrase.lastIndex = 0; // Reset regex state
+      if (match1 && match2) {
+        phraseMatches++;
+      }
+    }
+    if (keyPhrases.length > 0) {
+      score += (phraseMatches / keyPhrases.length) * 0.3;
+    }
+    
+    // Word-based similarity (30%)
+    const words1 = p1.split(/\s+/).filter(w => w.length > 2);
+    const words2 = p2.split(/\s+/).filter(w => w.length > 2);
+    const commonWords = words1.filter(w => words2.includes(w));
+    if (words1.length > 0 && words2.length > 0) {
+      score += (commonWords.length / Math.max(words1.length, words2.length)) * 0.3;
+    }
+    
+    return Math.min(score, 1.0);
   }
 
   private async findSuccessfulPatterns(params: any): Promise<SuccessfulPatternsResult> {
@@ -597,6 +727,31 @@ export class GraphService {
   // Public methods for session management
   async saveGraph(): Promise<void> {
     await this.storage.saveGraphMetadata(this.graph);
+  }
+
+  private buildErrorTypeIndex(): void {
+    this.errorTypeIndex.clear();
+    
+    for (const [nodeId, node] of this.graph.nodes) {
+      if (node.type === 'problem') {
+        const errorType = this.extractErrorType(node.content);
+        
+        if (errorType) {
+          if (!this.errorTypeIndex.has(errorType)) {
+            this.errorTypeIndex.set(errorType, new Set());
+          }
+          this.errorTypeIndex.get(errorType)!.add(nodeId);
+        } else {
+          // エラータイプが不明な場合は "other" に分類
+          if (!this.errorTypeIndex.has('other')) {
+            this.errorTypeIndex.set('other', new Set());
+          }
+          this.errorTypeIndex.get('other')!.add(nodeId);
+        }
+      }
+    }
+    
+    logger.info(`Error type index built: ${this.errorTypeIndex.size} types, ${this.graph.nodes.size} total nodes`);
   }
 
   getGraph(): DebugGraph {
