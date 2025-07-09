@@ -3,17 +3,14 @@ import {
   Node, 
   Edge, 
   DebugGraph, 
-  NodeType,
   EdgeType,
+  NodeType,
   ProblemNode,
   HypothesisNode,
-  ExperimentNode,
-  ObservationNode,
   LearningNode,
   SolutionNode
 } from '../types/graph.js';
 import {
-  ActionType,
   CreateAction,
   ConnectAction,
   QueryAction,
@@ -21,9 +18,7 @@ import {
   ConnectResponse,
   QueryResponse,
   SimilarProblemsResult,
-  SuccessfulPatternsResult,
-  LearningPathResult,
-  GraphVisualizationResult,
+  RecentActivityResult,
   getAutoEdgeType
 } from '../types/graphActions.js';
 import { logger } from '../utils/logger.js';
@@ -35,6 +30,11 @@ export class GraphService {
   private storage: GraphStorage;
   private errorTypeIndex: Map<string, Set<string>> = new Map();
   private readonly ERROR_TYPE_REGEX = /\b(type|reference|syntax|range|eval|uri)\s*error\b/i;
+  
+  // パフォーマンス最適化用インデックス
+  private nodesByType: Map<NodeType, Set<string>> = new Map();
+  private edgesByNode: Map<string, { incoming: Edge[], outgoing: Edge[] }> = new Map();
+  private parentIndex: Map<string, string> = new Map(); // 子ID → 親ID
 
   constructor() {
     this.graph = {
@@ -58,9 +58,9 @@ export class GraphService {
         this.graph = loadedGraph;
         logger.success(`Loaded graph with ${this.graph.nodes.size} nodes and ${this.graph.edges.size} edges`);
         
-        // 高速検索のためのエラータイプ別インデックスを構築
-        // 類似エラーの検索パフォーマンスを向上させる
+        // 高速検索のためのインデックスを構築
         this.buildErrorTypeIndex();
+        this.buildPerformanceIndexes();
       }
     } catch (error) {
       logger.error('Failed to initialize GraphService:', error);
@@ -97,6 +97,9 @@ export class GraphService {
 
       // ノードをグラフの内部Map構造に追加
       this.graph.nodes.set(nodeId, node);
+      
+      // パフォーマンスインデックスを更新
+      this.updateIndexesForNewNode(node);
 
       // 親ノードとの関係を自動判定して適切なエッジを作成
       // (例: 問題→仮説なら'hypothesizes'エッジ)
@@ -116,6 +119,9 @@ export class GraphService {
           const edge = this.createEdge(action.parentId, nodeId, edgeType);
           this.graph.edges.set(edge.id, edge);
           edgeId = edge.id;
+          
+          // パフォーマンスインデックスを更新
+          this.updateIndexesForNewEdge(edge);
         }
       } else if (action.nodeType === 'problem') {
         // 親が指定されていない問題ノードはルート問題として登録
@@ -131,6 +137,9 @@ export class GraphService {
       if (edgeId) {
         await this.storage.saveEdge(this.graph.edges.get(edgeId)!);
       }
+      
+      // グラフメタデータも更新して保存
+      await this.storage.saveGraphMetadata(this.graph);
 
       // 問題ノードの場合、エラータイプ別インデックスを更新
       // (例: 'TypeError'などを抽出して分類)
@@ -218,11 +227,17 @@ export class GraphService {
 
       this.graph.edges.set(edge.id, edge);
       
+      // パフォーマンスインデックスを更新
+      this.updateIndexesForNewEdge(edge);
+      
       // グラフ全体の最終更新日時を記録
       this.graph.metadata.lastModified = new Date();
 
       // ノードとエッジを永続化ストレージに保存
       await this.storage.saveEdge(edge);
+      
+      // グラフメタデータも更新して保存
+      await this.storage.saveGraphMetadata(this.graph);
 
       const response: ConnectResponse = {
         success: true,
@@ -258,29 +273,8 @@ export class GraphService {
         case 'similar-problems':
           results = await this.findSimilarProblems(action.parameters);
           break;
-        case 'successful-patterns':
-          results = await this.findSuccessfulPatterns(action.parameters);
-          break;
-        case 'learning-path':
-          results = await this.traceLearningPath(action.parameters);
-          break;
-        case 'graph-visualization':
-          results = await this.generateVisualization(action.parameters);
-          break;
-        case 'node-details':
-          results = await this.getNodeDetails(action.parameters?.nodeId);
-          break;
-        case 'related-nodes':
-          results = await this.findRelatedNodes(action.parameters?.nodeId);
-          break;
-        case 'failed-hypotheses':
-          results = await this.findFailedHypotheses(action.parameters);
-          break;
-        case 'solution-candidates':
-          results = await this.findSolutionCandidates(action.parameters);
-          break;
-        case 'pattern-match':
-          results = await this.findPatternMatches(action.parameters);
+        case 'recent-activity':
+          results = await this.getRecentActivity(action.parameters);
           break;
         default:
           return createJsonResponse({
@@ -471,11 +465,14 @@ export class GraphService {
       // 最小類似度以上の問題のみを結果に含める
       if (similarity >= minSimilarity) {
         const solutions = this.findSolutionsForProblem(node.id);
+        const nodeErrorType = this.extractErrorType(node.content);
+        
         problems.push({
           nodeId: node.id,
           content: node.content,
           similarity,
-          status: (node as ProblemNode).metadata.status,
+          errorType: nodeErrorType,
+          status: (node as ProblemNode).metadata.status || 'open',
           solutions
         });
       }
@@ -499,8 +496,9 @@ export class GraphService {
   /**
    * 特定の問題に対する解決策を検索
    * 'solves'エッジを追跡して関連する解決策ノードを収集
+   * デバッグパス（問題→仮説→実験→観察→解決）も含める
    * @param problemId 問題ノードのID
-   * @returns 解決策情報の配列(検証済みフラグ付き)
+   * @returns 解決策情報の配列(検証済みフラグとデバッグパス付き)
    */
   private findSolutionsForProblem(problemId: string): any[] {
     const solutions: any[] = [];
@@ -509,16 +507,71 @@ export class GraphService {
       if (edge.type === 'solves' && edge.to === problemId) {
         const solutionNode = this.graph.nodes.get(edge.from);
         if (solutionNode && solutionNode.type === 'solution') {
+          // 解決策から問題までのデバッグパスを構築
+          const debugPath = this.buildDebugPath(problemId, solutionNode.id);
+          
           solutions.push({
             nodeId: solutionNode.id,
             content: solutionNode.content,
-            verified: (solutionNode as SolutionNode).metadata.verified
+            verified: (solutionNode as SolutionNode).metadata.verified,
+            debugPath: debugPath.map(node => ({
+              nodeId: node.id,
+              type: node.type,
+              content: node.content
+            }))
           });
         }
       }
     }
     
     return solutions;
+  }
+
+  /**
+   * 問題から解決策までのデバッグパスを構築
+   * 親子関係を辿って経路を復元
+   */
+  private buildDebugPath(problemId: string, solutionId: string): Node[] {
+    const path: Node[] = [];
+    const solutionNode = this.graph.nodes.get(solutionId);
+    
+    if (!solutionNode) return [];
+    
+    // 解決策ノードから親を辿る
+    let currentNode: Node | undefined = solutionNode;
+    const visited = new Set<string>();
+    
+    while (currentNode && !visited.has(currentNode.id)) {
+      path.unshift(currentNode);
+      visited.add(currentNode.id);
+      
+      if (currentNode.id === problemId) {
+        break;
+      }
+      
+      // 親ノードをインデックスから効率的に取得
+      const parentId = this.parentIndex.get(currentNode.id);
+      if (parentId) {
+        currentNode = this.graph.nodes.get(parentId);
+      } else {
+        // 親子関係インデックスにない場合は受信エッジから親を探す
+        const nodeEdges = this.edgesByNode.get(currentNode.id);
+        if (nodeEdges && nodeEdges.incoming.length > 0) {
+          const parentEdge = nodeEdges.incoming[0];
+          currentNode = this.graph.nodes.get(parentEdge.from);
+        } else {
+          currentNode = undefined;
+        }
+      }
+    }
+    
+    // 問題ノードがパスに含まれていない場合は追加
+    const problemNode = this.graph.nodes.get(problemId);
+    if (problemNode && path.length > 0 && path[0].id !== problemId) {
+      path.unshift(problemNode);
+    }
+    
+    return path;
   }
 
   /**
@@ -596,210 +649,12 @@ export class GraphService {
     return Math.min(score, 1.0);
   }
 
-  /**
-   * 成功したデバッグパターンを分析
-   * 問題から解決策に至るパスを分析してパターンを抽出
-   * TODO: 実装予定
-   */
-  private async findSuccessfulPatterns(params: any): Promise<SuccessfulPatternsResult> {
-    // TODO: 問題→仮説→実験→観察→解決策のパス分析を実装
-    // 現在は空配列を返す（実装予定）
-    return { patterns: [] };
-  }
 
-  private async traceLearningPath(params: any): Promise<LearningPathResult> {
-    const nodeId = params?.nodeId;
-    if (!nodeId) {
-      return { path: [] };
-    }
-    
-    const path: any[] = [];
-    const visited = new Set<string>();
-    
-    // Simple BFS to trace path
-    const queue = [nodeId];
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      if (visited.has(currentId)) continue;
-      
-      visited.add(currentId);
-      const node = this.graph.nodes.get(currentId);
-      if (!node) continue;
-      
-      const connections = [];
-      for (const edge of this.graph.edges.values()) {
-        if (edge.from === currentId) {
-          connections.push({ type: edge.type, to: edge.to });
-          queue.push(edge.to);
-        }
-      }
-      
-      path.push({
-        nodeId: currentId,
-        type: node.type,
-        content: node.content,
-        connections
-      });
-    }
-    
-    return { path };
-  }
 
-  private async generateVisualization(params: any): Promise<GraphVisualizationResult> {
-    const format = params?.format || 'mermaid';
-    let content = '';
-    
-    if (format === 'mermaid') {
-      content = 'graph TD\n';
-      
-      // Add nodes
-      for (const node of this.graph.nodes.values()) {
-        const label = `${node.type}:${node.content.substring(0, 30)}...`;
-        content += `  ${node.id}["${label}"]\n`;
-      }
-      
-      // Add edges
-      for (const edge of this.graph.edges.values()) {
-        content += `  ${edge.from} -->|${edge.type}| ${edge.to}\n`;
-      }
-    }
-    
-    return {
-      format,
-      content,
-      nodeCount: this.graph.nodes.size,
-      edgeCount: this.graph.edges.size
-    };
-  }
 
-  private async getNodeDetails(nodeId?: string): Promise<any> {
-    if (!nodeId) return null;
-    
-    const node = this.graph.nodes.get(nodeId);
-    if (!node) return null;
-    
-    const incomingEdges = [];
-    const outgoingEdges = [];
-    
-    for (const edge of this.graph.edges.values()) {
-      if (edge.to === nodeId) {
-        incomingEdges.push(edge);
-      } else if (edge.from === nodeId) {
-        outgoingEdges.push(edge);
-      }
-    }
-    
-    return {
-      node,
-      incomingEdges,
-      outgoingEdges
-    };
-  }
 
-  private async findRelatedNodes(nodeId?: string): Promise<any> {
-    if (!nodeId) return [];
-    
-    const related = new Set<string>();
-    
-    for (const edge of this.graph.edges.values()) {
-      if (edge.from === nodeId) {
-        related.add(edge.to);
-      } else if (edge.to === nodeId) {
-        related.add(edge.from);
-      }
-    }
-    
-    return Array.from(related).map(id => this.graph.nodes.get(id)).filter(Boolean);
-  }
 
-  private async findFailedHypotheses(params: any): Promise<any> {
-    const failedHypotheses = [];
-    
-    for (const node of this.graph.nodes.values()) {
-      if (node.type === 'hypothesis') {
-        const hypothesis = node as HypothesisNode;
-        // Consider a hypothesis failed if confidence is low or no successful experiments
-        if (hypothesis.metadata.confidence && hypothesis.metadata.confidence < 50) {
-          failedHypotheses.push({
-            node: hypothesis,
-            reason: 'Low confidence',
-            confidence: hypothesis.metadata.confidence
-          });
-        }
-      }
-    }
-    
-    return { hypotheses: failedHypotheses };
-  }
 
-  private async findSolutionCandidates(params: any): Promise<any> {
-    const nodeId = params?.nodeId;
-    if (!nodeId) return { candidates: [] };
-    
-    const problemNode = this.graph.nodes.get(nodeId);
-    if (!problemNode || problemNode.type !== 'problem') {
-      return { candidates: [] };
-    }
-    
-    // Find existing solutions that might apply
-    const candidates = [];
-    for (const node of this.graph.nodes.values()) {
-      if (node.type === 'solution') {
-        // Calculate relevance based on content similarity
-        const similarity = this.calculateSimilarity(problemNode.content, node.content);
-        if (similarity > 0.3) {
-          candidates.push({
-            solution: node,
-            relevance: similarity,
-            verified: (node as SolutionNode).metadata.verified
-          });
-        }
-      }
-    }
-    
-    return { 
-      candidates: candidates.sort((a, b) => b.relevance - a.relevance),
-      problemId: nodeId 
-    };
-  }
-
-  private async findPatternMatches(params: any): Promise<any> {
-    const pattern = params?.pattern;
-    const nodeTypes = params?.nodeTypes;
-    
-    if (!pattern) return { matches: [] };
-    
-    const matches = [];
-    const regex = new RegExp(pattern, 'i');
-    
-    for (const node of this.graph.nodes.values()) {
-      // ノードタイプが指定されている場合は、一致しないノードをスキップ
-      if (nodeTypes && !nodeTypes.includes(node.type)) {
-        continue;
-      }
-      
-      // コンテンツ本文がパターンにマッチ: 関連度1.0
-      if (regex.test(node.content)) {
-        matches.push({
-          node,
-          matchType: 'content',
-          relevance: 1.0
-        });
-      } else if (node.metadata.tags?.some(tag => regex.test(tag))) {
-        matches.push({
-          node,
-          matchType: 'tag',
-          relevance: 0.8
-        });
-      }
-    }
-    
-    return { 
-      matches,
-      pattern,
-      totalMatches: matches.length 
-    };
-  }
 
   /**
    * セッション管理用パブリックメソッド
@@ -810,6 +665,71 @@ export class GraphService {
    */
   async saveGraph(): Promise<void> {
     await this.storage.saveGraphMetadata(this.graph);
+  }
+
+  /**
+   * 最近のアクティビティを取得
+   * ノードを作成時刻の降順でソートして返す
+   */
+  private async getRecentActivity(params: any): Promise<RecentActivityResult> {
+    const limit = params?.limit || 10;
+    
+    // すべてのノードを配列に変換して時刻でソート
+    const sortedNodes = Array.from(this.graph.nodes.values())
+      .sort((a, b) => b.metadata.createdAt.getTime() - a.metadata.createdAt.getTime())
+      .slice(0, limit);
+    
+    const result: RecentActivityResult = {
+      nodes: sortedNodes.map(node => {
+        // インデックスを使ってこのノードに関連するエッジを効率的に取得
+        const nodeEdges = this.edgesByNode.get(node.id) || { incoming: [], outgoing: [] };
+        const edges: Array<{type: EdgeType; targetNodeId: string; direction: 'from' | 'to'}> = [];
+        
+        // 送信エッジ
+        for (const edge of nodeEdges.outgoing) {
+          edges.push({
+            type: edge.type,
+            targetNodeId: edge.to,
+            direction: 'from'
+          });
+        }
+        
+        // 受信エッジ
+        for (const edge of nodeEdges.incoming) {
+          edges.push({
+            type: edge.type,
+            targetNodeId: edge.from,
+            direction: 'to'
+          });
+        }
+        
+        // 親ノードをインデックスから取得
+        let parent: any = undefined;
+        const parentId = this.parentIndex.get(node.id);
+        if (parentId) {
+          const parentNode = this.graph.nodes.get(parentId);
+          if (parentNode) {
+            parent = {
+              nodeId: parentNode.id,
+              type: parentNode.type,
+              content: parentNode.content
+            };
+          }
+        }
+        
+        return {
+          nodeId: node.id,
+          type: node.type,
+          content: node.content,
+          createdAt: node.metadata.createdAt.toISOString(),
+          parent,
+          edges
+        };
+      }),
+      totalNodes: this.graph.nodes.size
+    };
+    
+    return result;
   }
 
   /**
@@ -840,6 +760,88 @@ export class GraphService {
     }
     
     logger.info(`Error type index built: ${this.errorTypeIndex.size} types, ${this.graph.nodes.size} total nodes`);
+  }
+
+  /**
+   * パフォーマンス最適化用インデックスを構築
+   * ノードタイプ別、エッジ関係、親子関係のインデックスを作成
+   */
+  private buildPerformanceIndexes(): void {
+    // インデックスをクリア
+    this.nodesByType.clear();
+    this.edgesByNode.clear();
+    this.parentIndex.clear();
+
+    // ノードタイプ別インデックスを構築
+    for (const [nodeId, node] of this.graph.nodes) {
+      if (!this.nodesByType.has(node.type)) {
+        this.nodesByType.set(node.type, new Set());
+      }
+      this.nodesByType.get(node.type)!.add(nodeId);
+    }
+
+    // エッジ関係インデックスを構築
+    for (const [nodeId] of this.graph.nodes) {
+      this.edgesByNode.set(nodeId, { incoming: [], outgoing: [] });
+    }
+
+    for (const edge of this.graph.edges.values()) {
+      // 送信元ノードの送信エッジ
+      const fromEdges = this.edgesByNode.get(edge.from);
+      if (fromEdges) {
+        fromEdges.outgoing.push(edge);
+      }
+
+      // 宛先ノードの受信エッジ
+      const toEdges = this.edgesByNode.get(edge.to);
+      if (toEdges) {
+        toEdges.incoming.push(edge);
+      }
+
+      // 親子関係インデックス（自動作成されたエッジから親子関係を抽出）
+      const parentChildTypes = ['decomposes', 'hypothesizes', 'tests', 'produces', 'learns'];
+      if (parentChildTypes.includes(edge.type)) {
+        this.parentIndex.set(edge.to, edge.from);
+      }
+    }
+
+    logger.info(`Performance indexes built: ${this.nodesByType.size} node types, ${this.edgesByNode.size} nodes indexed`);
+  }
+
+  /**
+   * ノードが追加された時のインデックス更新
+   */
+  private updateIndexesForNewNode(node: Node): void {
+    // ノードタイプ別インデックスを更新
+    if (!this.nodesByType.has(node.type)) {
+      this.nodesByType.set(node.type, new Set());
+    }
+    this.nodesByType.get(node.type)!.add(node.id);
+
+    // エッジ関係インデックスを初期化
+    this.edgesByNode.set(node.id, { incoming: [], outgoing: [] });
+  }
+
+  /**
+   * エッジが追加された時のインデックス更新
+   */
+  private updateIndexesForNewEdge(edge: Edge): void {
+    // エッジ関係インデックスを更新
+    const fromEdges = this.edgesByNode.get(edge.from);
+    if (fromEdges) {
+      fromEdges.outgoing.push(edge);
+    }
+
+    const toEdges = this.edgesByNode.get(edge.to);
+    if (toEdges) {
+      toEdges.incoming.push(edge);
+    }
+
+    // 親子関係インデックスを更新
+    const parentChildTypes = ['decomposes', 'hypothesizes', 'tests', 'produces', 'learns'];
+    if (parentChildTypes.includes(edge.type)) {
+      this.parentIndex.set(edge.to, edge.from);
+    }
   }
 
   getGraph(): DebugGraph {

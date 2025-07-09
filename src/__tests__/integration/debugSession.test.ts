@@ -134,81 +134,92 @@ describe('Debug Session Integration Tests', () => {
       type: 'solves'
     });
 
-    // 7. Query the learning path
-    const pathResult = await graphService.query({
+    // 7. Check recent activity
+    const recentResult = await graphService.query({
       action: ActionType.QUERY,
-      type: 'learning-path',
+      type: 'recent-activity',
       parameters: {
-        nodeId: problem.nodeId
+        limit: 5
       }
     });
-    const path = JSON.parse(pathResult.content[0].text);
-    expect(path.success).toBe(true);
-    expect(path.results.path.length).toBeGreaterThan(3);
+    const recent = JSON.parse(recentResult.content[0].text);
+    expect(recent.success).toBe(true);
+    expect(recent.results.nodes.length).toBeGreaterThan(0);
+    expect(recent.results.nodes[0].type).toBe('solution'); // Most recent should be the solution
 
-    // 8. Check solution candidates for similar problems
-    const candidatesResult = await graphService.query({
-      action: ActionType.QUERY,
-      type: 'solution-candidates',
-      parameters: {
-        nodeId: problem.nodeId
-      }
-    });
-    const candidates = JSON.parse(candidatesResult.content[0].text);
-    expect(candidates.success).toBe(true);
-
-    // 9. Verify persistence
+    // 8. Verify persistence
     await graphService.saveGraph();
     
     // Create new instance and verify data persists
     const newGraphService = new GraphService();
     await newGraphService.initialize();
     
-    const nodeDetailsResult = await newGraphService.query({
+    const similarResult = await newGraphService.query({
       action: ActionType.QUERY,
-      type: 'node-details',
+      type: 'similar-problems',
       parameters: {
-        nodeId: problem.nodeId
+        pattern: 'TypeError property undefined',
+        limit: 5
       }
     });
-    const nodeDetails = JSON.parse(nodeDetailsResult.content[0].text);
-    expect(nodeDetails.success).toBe(true);
-    expect(nodeDetails.results.node.content).toContain('TypeError');
-    expect(nodeDetails.results.incomingEdges.length).toBeGreaterThan(0);
+    const similar = JSON.parse(similarResult.content[0].text);
+    expect(similar.success).toBe(true);
+    expect(similar.results.problems.length).toBeGreaterThan(0);
+    expect(similar.results.problems[0].solutions.length).toBeGreaterThan(0);
   });
 
-  it('should efficiently handle pattern-based problem search', async () => {
-    // Create multiple similar problems
+  it('should efficiently handle similar problem search', async () => {
+    // Create multiple similar problems with solutions
     const problems = [
-      'TypeError: Cannot read property "id" of null',
-      'TypeError: Cannot read property "name" of undefined',
-      'ReferenceError: user is not defined',
-      'TypeError: Cannot access property "email" of null'
+      { content: 'TypeError: Cannot read property "id" of null', solution: 'Add null check for id' },
+      { content: 'TypeError: Cannot read property "name" of undefined', solution: 'Use optional chaining for name' },
+      { content: 'ReferenceError: user is not defined', solution: 'Define user variable' },
+      { content: 'TypeError: Cannot access property "email" of null', solution: 'Add null check for email' }
     ];
 
-    for (const content of problems) {
-      await graphService.create({
+    for (const { content, solution } of problems) {
+      const problemResult = await graphService.create({
         action: ActionType.CREATE,
         nodeType: 'problem',
         content
       });
+      const problem = JSON.parse(problemResult.content[0].text);
+      
+      const solutionResult = await graphService.create({
+        action: ActionType.CREATE,
+        nodeType: 'solution',
+        content: solution,
+        metadata: { verified: true }
+      });
+      const sol = JSON.parse(solutionResult.content[0].text);
+      
+      await graphService.connect({
+        action: ActionType.CONNECT,
+        from: sol.nodeId,
+        to: problem.nodeId,
+        type: 'solves'
+      });
     }
 
-    // Search for TypeError patterns
+    // Search for similar TypeError problems
     const searchResult = await graphService.query({
       action: ActionType.QUERY,
-      type: 'pattern-match',
+      type: 'similar-problems',
       parameters: {
-        pattern: 'TypeError.*property',
-        nodeTypes: ['problem']
+        pattern: 'TypeError property',
+        limit: 10
       }
     });
 
     const search = JSON.parse(searchResult.content[0].text);
     expect(search.success).toBe(true);
-    expect(search.results.matches.length).toBe(3); // Should find 3 TypeErrors
-    expect(search.results.matches.every((m: any) => 
-      m.node.content.includes('TypeError') && m.node.content.includes('property')
-    )).toBe(true);
+    expect(search.results.problems.length).toBeGreaterThanOrEqual(3); // Should find at least 3 TypeErrors
+    
+    // Verify that similar problems have solutions
+    const typeErrorProblems = search.results.problems.filter((p: any) => 
+      p.content.includes('TypeError')
+    );
+    expect(typeErrorProblems.length).toBeGreaterThanOrEqual(3);
+    expect(typeErrorProblems.every((p: any) => p.solutions.length > 0)).toBe(true);
   });
 });

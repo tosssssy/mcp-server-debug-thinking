@@ -53,39 +53,23 @@ export interface ConnectAction extends BaseAction {
 
 /**
  * クエリタイプ: グラフに対する検索・分析操作
- * 各タイプは異なる分析目的に特化
+ * Claude Codeでの実用性を重視した最小限のセット
  */
 export type QueryType = 
-  | 'similar-problems'      // 類似問題検索: エラータイプやキーワードの一致度で判定
-  | 'successful-patterns'   // 成功パターン分析: 問題→解決の有効なルートを抽出
-  | 'failed-hypotheses'     // 失敗仮説検索: 検証で否定された仮説を特定
-  | 'learning-path'         // 学習パス追跡: 特定ノードからの知見獲得経路
-  | 'solution-candidates'   // 解決策候補検索: 問題に対する既存解決策の適用可能性
-  | 'graph-visualization'   // グラフ可視化: Mermaid/DOT形式での出力生成
-  | 'node-details'         // ノード詳細: 特定ノードとその接続関係
-  | 'related-nodes'        // 関連ノード検索: 直接接続されたノード群
-  | 'pattern-match';       // パターンマッチ: 正規表現やタグでの柔軟な検索
+  | 'similar-problems'      // 類似問題検索: 過去の類似エラーとその解決策を取得
+  | 'recent-activity';      // 最近の活動: 直近のデバッグノードを時系列で取得
 
 /**
  * QUERYアクション: グラフデータの検索・分析
- * パラメータで細かい検索条件を指定可能
+ * シンプルで実用的なパラメータのみ
  */
 export interface QueryAction extends BaseAction {
   action: ActionType.QUERY;
   type: QueryType;
   parameters?: {
-    nodeId?: string;        // 基準ノードID: このノードを中心に検索
-    pattern?: string;       // 検索パターン: テキストまたは正規表現
-    nodeTypes?: NodeType[]; // ノードタイプフィルタ: 特定タイプのみ対象
-    edgeTypes?: EdgeType[]; // エッジタイプフィルタ: 特定関係のみ対象
-    confidence?: number;    // 最小信頼度: この値以上のノードのみ
+    pattern?: string;       // similar-problems用: 検索パターン
     limit?: number;         // 結果件数上限: デフォルト10件
-    depth?: number;         // 探索深度: 基準ノードから何ホップまで探索
-    timeRange?: {
-      start?: Date;
-      end?: Date;
-    };
-    tags?: string[];        // タグフィルタ: 指定タグを持つノードのみ
+    minSimilarity?: number; // similar-problems用: 最小類似度（0-1）
   };
 }
 
@@ -157,66 +141,56 @@ export interface QueryResponse {
  */
 /**
  * similar-problemsクエリの結果型
- * 類似度と解決策情報を含む問題リスト
+ * 類似問題とその解決策を包括的に返す
  */
 export interface SimilarProblemsResult {
   problems: Array<{
     nodeId: string;
     content: string;
     similarity: number;  // 類似度スコア(0-1): 1に近いほど類似
-    status?: 'open' | 'investigating' | 'solved' | 'abandoned';
-    solutions?: Array<{
+    errorType?: string;  // エラータイプ（例：'type error'）
+    status: 'open' | 'investigating' | 'solved' | 'abandoned';
+    // 解決策の詳細情報
+    solutions: Array<{
       nodeId: string;
       content: string;
       verified: boolean;
+      // 解決までのデバッグパス（問題→仮説→実験→観察→解決）
+      debugPath?: Array<{
+        nodeId: string;
+        type: NodeType;
+        content: string;
+      }>;
     }>;
   }>;
 }
 
 /**
- * successful-patternsクエリの結果型
- * 成功パターンの統計と具体例
+ * recent-activityクエリの結果型
+ * 最近のデバッグ活動を時系列で返す
  */
-export interface SuccessfulPatternsResult {
-  patterns: Array<{
-    description: string;
-    frequency: number;
-    successRate: number;
-    examplePaths: Array<{
-      problem: string;
-      hypothesis: string;
-      experiment: string;
-      solution: string;
-    }>;
-  }>;
-}
-
-/**
- * learning-pathクエリの結果型
- * ノード間の接続関係を含む経路情報
- */
-export interface LearningPathResult {
-  path: Array<{
+export interface RecentActivityResult {
+  nodes: Array<{
     nodeId: string;
     type: NodeType;
     content: string;
-    connections: Array<{
+    createdAt: string;  // ISO 8601形式
+    // 親ノードがある場合はその情報
+    parent?: {
+      nodeId: string;
+      type: NodeType;
+      content: string;
+    };
+    // 接続されているエッジ
+    edges: Array<{
       type: EdgeType;
-      to: string;
+      targetNodeId: string;
+      direction: 'from' | 'to';
     }>;
   }>;
+  totalNodes: number;  // グラフ内の総ノード数
 }
 
-/**
- * graph-visualizationクエリの結果型
- * 様々な形式でのグラフ出力
- */
-export interface GraphVisualizationResult {
-  format: 'mermaid' | 'dot' | 'json';
-  content: string;
-  nodeCount: number;
-  edgeCount: number;
-}
 
 /**
  * 親子関係から適切なエッジタイプを自動判定

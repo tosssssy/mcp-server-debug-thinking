@@ -17,7 +17,7 @@ import {
 } from "./types/graphActions.js";
 import { createJsonResponse } from "./utils/format.js";
 import { logger } from "./utils/logger.js";
-import { TOOL_NAME, SERVER_NAME, SERVER_VERSION, ERROR_MESSAGES } from "./constants.js";
+import { TOOL_NAME, SERVER_NAME, SERVER_VERSION } from "./constants.js";
 
 const DEBUG_THINKING_TOOL: Tool = {
   name: TOOL_NAME,
@@ -41,7 +41,7 @@ Features:
 - Automatic relationship creation based on parent-child context
 - Pattern recognition across debugging sessions
 - Knowledge accumulation and reuse
-- Graph visualization support
+- Fast similarity search for problems and solutions
 
 Data persists in ~/.debug-thinking-mcp/`,
   inputSchema: {
@@ -108,14 +108,7 @@ Data persists in ~/.debug-thinking-mcp/`,
         type: "string",
         enum: [
           "similar-problems",
-          "successful-patterns",
-          "failed-hypotheses",
-          "learning-path",
-          "solution-candidates",
-          "graph-visualization",
-          "node-details",
-          "related-nodes",
-          "pattern-match",
+          "recent-activity",
         ],
         description: "Type of query to perform (for query action)",
       },
@@ -123,14 +116,9 @@ Data persists in ~/.debug-thinking-mcp/`,
         type: "object",
         description: "Query parameters (for query action)",
         properties: {
-          nodeId: { type: "string" },
-          pattern: { type: "string" },
-          nodeTypes: { type: "array", items: { type: "string" } },
-          edgeTypes: { type: "array", items: { type: "string" } },
-          confidence: { type: "number" },
-          limit: { type: "integer", minimum: 1, maximum: 100 },
-          depth: { type: "integer", minimum: 1, maximum: 10 },
-          tags: { type: "array", items: { type: "string" } },
+          pattern: { type: "string", description: "Search pattern for similar-problems query" },
+          limit: { type: "integer", minimum: 1, maximum: 100, description: "Maximum number of results to return" },
+          minSimilarity: { type: "number", minimum: 0, maximum: 1, description: "Minimum similarity score for similar-problems query" },
         },
       },
     },

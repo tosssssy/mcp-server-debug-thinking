@@ -42,9 +42,9 @@
 </td>
 <td width="50%">
 
-### 🔍 パターン認識
+### 🔍 類似問題検索
 
-過去の成功パターンを自動識別し、類似問題に適用
+過去の類似問題と解決策を高速検索し、デバッグパスを提供
 
 </td>
 </tr>
@@ -142,7 +142,7 @@ await use_tool("debug_thinking", {
 // 類似問題を検索
 await use_tool("debug_thinking", {
   action: "query",
-  queryType: "similar-problems",
+  type: "similar-problems",
   parameters: {
     pattern: "TypeError undefined Next.js SSR",
     limit: 5,
@@ -255,44 +255,77 @@ graph TD
 4. **観察から学習**: z-indexの重要性を学習
 5. **解決策の適用**: 具体的な修正方法
 
-## 🔍 高度なクエリ機能
+## 🔍 クエリ機能
 
-### 成功パターンの検索
+### 類似問題の検索と解決策の取得
+
+過去の類似問題とその解決策を検索し、デバッグパスも含めて取得します。
 
 ```typescript
-const patterns = await use_tool("debug_thinking", {
+const result = await use_tool("debug_thinking", {
   action: "query",
-  queryType: "successful-patterns",
+  type: "similar-problems",
   parameters: {
-    tags: ["react", "performance"],
-    minConfidence: 80,
+    pattern: "TypeError undefined Next.js SSR",
+    limit: 5,
+    minSimilarity: 0.3,
   },
 });
+
+// レスポンス例:
+{
+  "problems": [{
+    "nodeId": "prob-123",
+    "content": "TypeError: Cannot read property 'name' of undefined in getServerSideProps",
+    "similarity": 0.85,
+    "status": "solved",
+    "solutions": [{
+      "nodeId": "sol-456",
+      "content": "Add optional chaining to handle undefined data",
+      "verified": true,
+      "debugPath": [
+        { "nodeId": "prob-123", "type": "problem", "content": "..." },
+        { "nodeId": "hyp-234", "type": "hypothesis", "content": "..." },
+        { "nodeId": "exp-345", "type": "experiment", "content": "..." },
+        { "nodeId": "obs-456", "type": "observation", "content": "..." },
+        { "nodeId": "sol-456", "type": "solution", "content": "..." }
+      ]
+    }]
+  }]
+}
 ```
 
-### 学習パスの可視化
+### 最近の活動を確認
+
+直近のデバッグノードを時系列で取得し、セッションの継続性を保ちます。
 
 ```typescript
-const learningPath = await use_tool("debug_thinking", {
+const recentActivity = await use_tool("debug_thinking", {
   action: "query",
-  queryType: "learning-path",
+  type: "recent-activity",
   parameters: {
-    nodeId: "problem-root-id",
+    limit: 10,  // 取得件数（デフォルト: 10）
   },
 });
-```
 
-### グラフのエクスポート
-
-```typescript
-const visualization = await use_tool("debug_thinking", {
-  action: "query",
-  queryType: "graph-visualization",
-  parameters: {
-    format: "mermaid",
-    depth: 3,
-  },
-});
+// レスポンス例:
+{
+  "nodes": [{
+    "nodeId": "node-789",
+    "type": "solution",
+    "content": "Fixed by adding null check",
+    "createdAt": "2024-01-20T10:30:00Z",
+    "parent": {
+      "nodeId": "node-678",
+      "type": "observation",
+      "content": "Variable is undefined on first render"
+    },
+    "edges": [
+      { "type": "solves", "targetNodeId": "prob-123", "direction": "from" }
+    ]
+  }],
+  "totalNodes": 156
+}
 ```
 
 ## 🏗️ アーキテクチャ

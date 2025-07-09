@@ -88,14 +88,7 @@ describe('Graph Actions', () => {
     it('should support all query types', () => {
       const queryTypes = [
         'similar-problems',
-        'successful-patterns',
-        'failed-hypotheses',
-        'learning-path',
-        'solution-candidates',
-        'graph-visualization',
-        'node-details',
-        'related-nodes',
-        'pattern-match',
+        'recent-activity',
       ];
 
       queryTypes.forEach(queryType => {
@@ -112,33 +105,21 @@ describe('Graph Actions', () => {
         action: ActionType.QUERY,
         type: 'similar-problems',
         parameters: {
-          nodeId: 'ref-node',
           pattern: 'memory leak',
-          nodeTypes: ['problem', 'hypothesis'],
-          edgeTypes: ['supports', 'contradicts'],
-          confidence: 75,
           limit: 10,
-          depth: 3,
-          timeRange: {
-            start: new Date('2024-01-01'),
-            end: new Date('2024-12-31'),
-          },
-          tags: ['performance', 'memory'],
+          minSimilarity: 0.5,
         },
       };
 
-      expect(queryAction.parameters?.nodeId).toBe('ref-node');
       expect(queryAction.parameters?.pattern).toBe('memory leak');
-      expect(queryAction.parameters?.nodeTypes).toEqual(['problem', 'hypothesis']);
-      expect(queryAction.parameters?.confidence).toBe(75);
       expect(queryAction.parameters?.limit).toBe(10);
-      expect(queryAction.parameters?.tags).toContain('performance');
+      expect(queryAction.parameters?.minSimilarity).toBe(0.5);
     });
 
     it('should work without parameters', () => {
       const minimalQuery: QueryAction = {
         action: ActionType.QUERY,
-        type: 'graph-visualization',
+        type: 'recent-activity',
       };
 
       expect(minimalQuery.parameters).toBeUndefined();

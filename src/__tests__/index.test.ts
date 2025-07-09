@@ -17,14 +17,7 @@ describe('MCP Server Configuration', () => {
       const expectedEdgeTypes = ['decomposes', 'hypothesizes', 'tests', 'produces', 'learns', 'contradicts', 'supports', 'solves'];
       const expectedQueryTypes = [
         'similar-problems',
-        'successful-patterns', 
-        'failed-hypotheses',
-        'learning-path',
-        'solution-candidates',
-        'graph-visualization',
-        'node-details',
-        'related-nodes',
-        'pattern-match'
+        'recent-activity'
       ];
 
       // These are defined in the tool schema - we're just verifying they exist

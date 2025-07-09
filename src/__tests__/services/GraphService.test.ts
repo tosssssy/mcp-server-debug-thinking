@@ -7,8 +7,8 @@ describe('GraphService', () => {
   let graphService: GraphService;
 
   beforeEach(async () => {
-    // Ensure clean test environment
-    process.env.DEBUG_DATA_DIR = `.test-graph-service-${Date.now()}`;
+    // Ensure clean test environment with unique directory per test
+    process.env.DEBUG_DATA_DIR = `.test-graph-service-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     graphService = new GraphService();
     await graphService.initialize();
   });
@@ -516,15 +516,18 @@ describe('GraphService', () => {
       }
     });
 
-    it('should get node details', async () => {
+    it('should get recent activity', async () => {
+      // Create nodes at different times
       const problem = await graphService.create({
         action: ActionType.CREATE,
         nodeType: 'problem',
-        content: 'Test problem for details',
+        content: 'First problem',
       });
       const p = JSON.parse(problem.content[0].text);
 
-      // Create a hypothesis connected from the problem
+      // Small delay to ensure different timestamps
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       const hypothesis = await graphService.create({
         action: ActionType.CREATE,
         nodeType: 'hypothesis',
@@ -533,7 +536,8 @@ describe('GraphService', () => {
       });
       const h = JSON.parse(hypothesis.content[0].text);
 
-      // Create a solution that solves the problem
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       const solution = await graphService.create({
         action: ActionType.CREATE,
         nodeType: 'solution',
@@ -550,73 +554,82 @@ describe('GraphService', () => {
 
       const result = await graphService.query({
         action: ActionType.QUERY,
-        type: 'node-details',
+        type: 'recent-activity',
         parameters: {
-          nodeId: p.nodeId,
+          limit: 5,
         },
       });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.results).toBeDefined();
-      expect(response.results.node).toBeDefined();
-      expect(response.results.node.content).toBe('Test problem for details');
-      expect(response.results.incomingEdges).toBeDefined();
-      expect(response.results.outgoingEdges).toBeDefined();
-      expect(response.results.incomingEdges.length).toBeGreaterThan(0);
-      expect(response.results.outgoingEdges.length).toBeGreaterThan(0);
+      expect(response.results.nodes).toBeDefined();
+      expect(response.results.nodes.length).toBeGreaterThan(0);
+      expect(response.results.totalNodes).toBeGreaterThan(0);
+      
+      // Verify nodes are sorted by creation time (most recent first)
+      const firstNode = response.results.nodes[0];
+      expect(firstNode.nodeId).toBe(s.nodeId);
+      expect(firstNode.content).toBe('Test solution');
+      expect(firstNode.edges).toBeDefined();
+      expect(firstNode.edges.length).toBeGreaterThan(0);
     });
 
-    it('should trace learning path', async () => {
-      // Create a path: problem -> hypothesis -> experiment -> observation -> learning
+    it('should handle recent activity with limit', async () => {
+      // Create many nodes
+      for (let i = 0; i < 15; i++) {
+        await graphService.create({
+          action: ActionType.CREATE,
+          nodeType: 'problem',
+          content: `Problem ${i}`,
+        });
+        await new Promise(resolve => setTimeout(resolve, 5)); // Small delay
+      }
+
+      const result = await graphService.query({
+        action: ActionType.QUERY,
+        type: 'recent-activity',
+        parameters: {
+          limit: 10,
+        },
+      });
+
+      const response = JSON.parse(result.content[0].text);
+      expect(response.success).toBe(true);
+      expect(response.results.nodes.length).toBe(10);
+      expect(response.results.totalNodes).toBeGreaterThanOrEqual(15);
+      
+      // Verify most recent nodes are returned
+      expect(response.results.nodes[0].content).toContain('Problem 14');
+    });
+
+    it('should include parent information in recent activity', async () => {
       const problem = await graphService.create({
         action: ActionType.CREATE,
         nodeType: 'problem',
-        content: 'Path test problem',
+        content: 'Parent problem',
       });
       const p = JSON.parse(problem.content[0].text);
 
       const hypothesis = await graphService.create({
         action: ActionType.CREATE,
         nodeType: 'hypothesis',
-        content: 'Path test hypothesis',
+        content: 'Child hypothesis',
         parentId: p.nodeId,
       });
-      const h = JSON.parse(hypothesis.content[0].text);
-
-      const experiment = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'experiment',
-        content: 'Path test experiment',
-        parentId: h.nodeId,
-      });
 
       const result = await graphService.query({
         action: ActionType.QUERY,
-        type: 'learning-path',
-        parameters: {
-          nodeId: p.nodeId,
-        },
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.path).toBeDefined();
-      expect(response.results.path.length).toBeGreaterThanOrEqual(3);
-    });
-
-    it('should generate graph visualization', async () => {
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'graph-visualization',
+        type: 'recent-activity',
         parameters: {},
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.format).toBe('mermaid');
-      expect(response.results.content).toContain('graph TD');
-      expect(response.results.nodeCount).toBeGreaterThan(0);
+      const hypothesisNode = response.results.nodes.find((n: any) => n.type === 'hypothesis');
+      expect(hypothesisNode).toBeDefined();
+      expect(hypothesisNode.parent).toBeDefined();
+      expect(hypothesisNode.parent.nodeId).toBe(p.nodeId);
+      expect(hypothesisNode.parent.content).toBe('Parent problem');
     });
 
     it('should handle unknown query type', async () => {
@@ -631,27 +644,44 @@ describe('GraphService', () => {
       expect(response.message).toContain('Unknown query type');
     });
 
-    it('should find successful patterns', async () => {
-      // Create a successful pattern: problem -> hypothesis -> solution
+    it('should find similar problems with debug paths', async () => {
+      // Create a complete debug path
       const problem = await graphService.create({
         action: ActionType.CREATE,
         nodeType: 'problem',
-        content: 'Performance issue',
+        content: 'Performance issue with database queries',
       });
       const problemId = JSON.parse(problem.content[0].text).nodeId;
 
       const hypothesis = await graphService.create({
         action: ActionType.CREATE,
         nodeType: 'hypothesis',
-        content: 'Memory leak',
+        content: 'Missing database indexes',
         parentId: problemId,
       });
       const hypothesisId = JSON.parse(hypothesis.content[0].text).nodeId;
 
+      const experiment = await graphService.create({
+        action: ActionType.CREATE,
+        nodeType: 'experiment',
+        content: 'Add indexes to frequently queried columns',
+        parentId: hypothesisId,
+      });
+      const experimentId = JSON.parse(experiment.content[0].text).nodeId;
+
+      const observation = await graphService.create({
+        action: ActionType.CREATE,
+        nodeType: 'observation',
+        content: 'Query time reduced from 5s to 0.1s',
+        parentId: experimentId,
+      });
+      const observationId = JSON.parse(observation.content[0].text).nodeId;
+
       const solution = await graphService.create({
         action: ActionType.CREATE,
         nodeType: 'solution',
-        content: 'Fix memory leak',
+        content: 'Add database indexes',
+        metadata: { verified: true },
       });
       const solutionId = JSON.parse(solution.content[0].text).nodeId;
 
@@ -662,233 +692,42 @@ describe('GraphService', () => {
         type: 'solves',
       });
 
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'successful-patterns',
-        parameters: {},
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.patterns).toBeDefined();
-    });
-
-    it('should find failed hypotheses', async () => {
-      // Create a failed hypothesis
-      const problem = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'problem',
-        content: 'Bug in code',
-      });
-      const problemId = JSON.parse(problem.content[0].text).nodeId;
-
-      const hypothesis = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'hypothesis',
-        content: 'Wrong theory',
-        parentId: problemId,
-        metadata: { confidence: 20 },
-      });
-
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'failed-hypotheses',
-        parameters: {},
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results).toBeDefined();
-    });
-
-    it('should find solution candidates', async () => {
-      // Create a problem
-      const problem = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'problem',
-        content: 'TypeError: Cannot read property of undefined',
-      });
-      const problemId = JSON.parse(problem.content[0].text).nodeId;
-
-      // Create solutions with highly similar content to meet the 0.3 similarity threshold
-      const solution1 = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'solution',
-        content: 'Fix TypeError: Cannot read property by adding null checks',
-        metadata: { verified: true },
-      });
-
-      const solution2 = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'solution',
-        content: 'Handle TypeError with optional chaining operator',
-        metadata: { verified: false },
-      });
-
-      // Create an unrelated solution
-      const solution3 = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'solution',
-        content: 'Fix memory leak in React component lifecycle',
-        metadata: { verified: true },
-      });
-
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'solution-candidates',
-        parameters: { nodeId: problemId },
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.candidates).toBeDefined();
-      expect(response.results.candidates).toBeInstanceOf(Array);
-      expect(response.results.problemId).toBe(problemId);
-      
-      // Should find at least one solution candidate with TypeError
-      expect(response.results.candidates.length).toBeGreaterThanOrEqual(1);
-      
-      // Verify the candidate structure
-      if (response.results.candidates.length > 0) {
-        const firstCandidate = response.results.candidates[0];
-        expect(firstCandidate).toHaveProperty('solution');
-        expect(firstCandidate).toHaveProperty('relevance');
-        expect(firstCandidate).toHaveProperty('verified');
-        expect(firstCandidate.relevance).toBeGreaterThan(0.3);
-      }
-    });
-
-    it('should handle solution candidates with no node ID', async () => {
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'solution-candidates',
-        parameters: {},
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.candidates).toEqual([]);
-    });
-
-    it('should handle solution candidates for non-problem node', async () => {
-      const hypothesis = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'hypothesis',
-        content: 'Test hypothesis',
-      });
-      const hypothesisId = JSON.parse(hypothesis.content[0].text).nodeId;
-
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'solution-candidates',
-        parameters: { nodeId: hypothesisId },
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.candidates).toEqual([]);
-    });
-
-    it('should find related nodes', async () => {
-      const node1 = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'problem',
-        content: 'Test problem',
-      });
-      const nodeId1 = JSON.parse(node1.content[0].text).nodeId;
-
-      const node2 = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'hypothesis',
-        content: 'Related hypothesis',
-        parentId: nodeId1,
-      });
-      const nodeId2 = JSON.parse(node2.content[0].text).nodeId;
-
-      const node3 = await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'experiment',
-        content: 'Test experiment',
-      });
-      const nodeId3 = JSON.parse(node3.content[0].text).nodeId;
-
-      // Create edges in both directions
+      // Update the problem status
       await graphService.connect({
         action: ActionType.CONNECT,
-        from: nodeId3,
-        to: nodeId2,
-        type: 'tests',
+        from: observationId,
+        to: problemId,
+        type: 'supports',
       });
 
-      // Query for related nodes from the middle node (hypothesis)
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'related-nodes',
-        parameters: { nodeId: nodeId2 },
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results).toBeDefined();
-      expect(response.results).toBeInstanceOf(Array);
-      expect(response.results.length).toBeGreaterThanOrEqual(2); // Should find both problem and experiment
-    });
-
-    it('should handle pattern-match query', async () => {
-      await graphService.create({
+      // Create a similar problem and query
+      const newProblem = await graphService.create({
         action: ActionType.CREATE,
         nodeType: 'problem',
-        content: 'Memory leak in production',
-        metadata: { tags: ['memory', 'production'] },
+        content: 'Slow database performance',
       });
 
       const result = await graphService.query({
         action: ActionType.QUERY,
-        type: 'pattern-match',
+        type: 'similar-problems',
         parameters: {
-          pattern: 'memory',
-          nodeTypes: ['problem'],
+          pattern: 'database performance slow',
+          limit: 5,
         },
       });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.results).toBeDefined();
-      expect(response.results.matches.length).toBeGreaterThan(0);
-    });
-
-    it('should match patterns in tags', async () => {
-      await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'problem',
-        content: 'Some other issue',
-        metadata: { tags: ['performance', 'critical'] },
-      });
-
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'pattern-match',
-        parameters: {
-          pattern: 'critical',
-        },
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.matches.length).toBeGreaterThan(0);
-      expect(response.results.matches[0].matchType).toBe('tag');
-    });
-
-    it('should handle pattern-match with no pattern', async () => {
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'pattern-match',
-        parameters: {},
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.matches).toEqual([]);
+      expect(response.results.problems).toBeDefined();
+      
+      if (response.results.problems.length > 0) {
+        const similarProblem = response.results.problems[0];
+        expect(similarProblem.solutions).toBeDefined();
+        if (similarProblem.solutions.length > 0) {
+          expect(similarProblem.solutions[0].debugPath).toBeDefined();
+          expect(similarProblem.solutions[0].debugPath.length).toBeGreaterThan(0);
+        }
+      }
     });
   });
 
@@ -958,90 +797,6 @@ describe('GraphService', () => {
     });
   });
 
-  describe('findFailedHypotheses', () => {
-    it('should find hypotheses with low confidence', async () => {
-      // Create hypotheses with different confidence levels
-      await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'hypothesis',
-        content: 'Low confidence hypothesis',
-        metadata: { confidence: 30 },
-      });
-
-      await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'hypothesis',
-        content: 'High confidence hypothesis',
-        metadata: { confidence: 80 },
-      });
-
-      await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'hypothesis',
-        content: 'Medium confidence hypothesis',
-        metadata: { confidence: 45 },
-      });
-
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'failed-hypotheses',
-        parameters: {},
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.hypotheses).toBeDefined();
-      expect(response.results.hypotheses.length).toBe(2); // Only confidence < 50
-      expect(response.results.hypotheses[0].confidence).toBeLessThan(50);
-    });
-  });
-
-  describe('findPatternMatches', () => {
-    it('should find nodes matching content pattern', async () => {
-      // Create nodes with different content
-      await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'problem',
-        content: 'Memory leak in production',
-      });
-
-      await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'observation',
-        content: 'Memory usage keeps increasing',
-      });
-
-      await graphService.create({
-        action: ActionType.CREATE,
-        nodeType: 'solution',
-        content: 'Fixed memory leak by clearing cache',
-      });
-
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'pattern-match',
-        parameters: { pattern: 'memory' },
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.matches).toBeDefined();
-      expect(response.results.matches.length).toBe(3); // All contain "memory"
-    });
-
-    it('should handle empty pattern', async () => {
-      const result = await graphService.query({
-        action: ActionType.QUERY,
-        type: 'pattern-match',
-        parameters: {},
-      });
-
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.results.matches).toBeDefined();
-      expect(response.results.matches.length).toBe(0);
-    });
-  });
 
   describe('buildErrorTypeIndex edge cases', () => {
     it('should handle nodes without error types', async () => {
@@ -1093,6 +848,329 @@ describe('GraphService', () => {
       // Verify that new error type was added to index (the regex extracts "uri error")
       // @ts-ignore - access private property for testing
       expect(service.errorTypeIndex.has('uri error')).toBe(true);
+    });
+  });
+
+  describe('Performance optimization indexes', () => {
+    it('should build performance indexes on initialization', async () => {
+      const service = new GraphService();
+      
+      // Create some test data before initialization
+      const problem = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'problem',
+        content: 'Test problem',
+      });
+      const problemId = JSON.parse(problem.content[0].text).nodeId;
+
+      const hypothesis = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'hypothesis',
+        content: 'Test hypothesis',
+        parentId: problemId,
+      });
+      const hypothesisId = JSON.parse(hypothesis.content[0].text).nodeId;
+
+      const experiment = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'experiment',
+        content: 'Test experiment',
+        parentId: hypothesisId,
+      });
+
+      // Force rebuild indexes
+      // @ts-ignore - access private method for testing
+      service.buildPerformanceIndexes();
+
+      // Verify nodesByType index
+      // @ts-ignore - access private property for testing
+      const nodesByType = service.nodesByType;
+      expect(nodesByType.has('problem')).toBe(true);
+      expect(nodesByType.has('hypothesis')).toBe(true);
+      expect(nodesByType.has('experiment')).toBe(true);
+      expect(nodesByType.get('problem')?.has(problemId)).toBe(true);
+
+      // Verify edgesByNode index
+      // @ts-ignore - access private property for testing
+      const edgesByNode = service.edgesByNode;
+      expect(edgesByNode.has(problemId)).toBe(true);
+      expect(edgesByNode.has(hypothesisId)).toBe(true);
+      
+      const problemEdges = edgesByNode.get(problemId);
+      expect(problemEdges?.outgoing.length).toBe(1); // One edge to hypothesis
+      expect(problemEdges?.incoming.length).toBe(0);
+
+      const hypothesisEdges = edgesByNode.get(hypothesisId);
+      expect(hypothesisEdges?.incoming.length).toBe(1); // One edge from problem
+      expect(hypothesisEdges?.outgoing.length).toBe(1); // One edge to experiment
+
+      // Verify parentIndex
+      // @ts-ignore - access private property for testing
+      const parentIndex = service.parentIndex;
+      expect(parentIndex.get(hypothesisId)).toBe(problemId);
+    });
+
+    it('should update indexes when adding new nodes', async () => {
+      const service = new GraphService();
+      await service.initialize();
+
+      // Create a node
+      const result = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'problem',
+        content: 'New problem',
+      });
+      const nodeId = JSON.parse(result.content[0].text).nodeId;
+
+      // Verify the node is in the indexes
+      // @ts-ignore - access private property for testing
+      expect(service.nodesByType.get('problem')?.has(nodeId)).toBe(true);
+      // @ts-ignore - access private property for testing
+      expect(service.edgesByNode.has(nodeId)).toBe(true);
+    });
+
+    it('should update indexes when adding new edges', async () => {
+      const service = new GraphService();
+      await service.initialize();
+
+      // Create two nodes
+      const node1 = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'observation',
+        content: 'Observation 1',
+      });
+      const nodeId1 = JSON.parse(node1.content[0].text).nodeId;
+
+      const node2 = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'learning',
+        content: 'Learning 1',
+      });
+      const nodeId2 = JSON.parse(node2.content[0].text).nodeId;
+
+      // Connect them
+      await service.connect({
+        action: ActionType.CONNECT,
+        from: nodeId1,
+        to: nodeId2,
+        type: 'learns',
+      });
+
+      // Verify edge is in the index
+      // @ts-ignore - access private property for testing
+      const edgesByNode = service.edgesByNode;
+      
+      const node1Edges = edgesByNode.get(nodeId1);
+      expect(node1Edges?.outgoing.length).toBe(1);
+      expect(node1Edges?.outgoing[0].to).toBe(nodeId2);
+
+      const node2Edges = edgesByNode.get(nodeId2);
+      expect(node2Edges?.incoming.length).toBe(1);
+      expect(node2Edges?.incoming[0].from).toBe(nodeId1);
+
+      // Verify parent index is updated for parent-child edge types
+      // @ts-ignore - access private property for testing
+      expect(service.parentIndex.get(nodeId2)).toBe(nodeId1);
+    });
+
+    it('should use indexes for efficient getRecentActivity', async () => {
+      const service = new GraphService();
+      await service.initialize();
+
+      // Create a complex graph structure
+      const problem = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'problem',
+        content: 'Root problem',
+      });
+      const problemId = JSON.parse(problem.content[0].text).nodeId;
+
+      const hypothesis = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'hypothesis',
+        content: 'Test hypothesis',
+        parentId: problemId,
+      });
+      const hypothesisId = JSON.parse(hypothesis.content[0].text).nodeId;
+
+      const solution = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'solution',
+        content: 'Test solution',
+      });
+      const solutionId = JSON.parse(solution.content[0].text).nodeId;
+
+      await service.connect({
+        action: ActionType.CONNECT,
+        from: solutionId,
+        to: problemId,
+        type: 'solves',
+      });
+
+      // Get recent activity
+      const result = await service.query({
+        action: ActionType.QUERY,
+        type: 'recent-activity',
+        parameters: { limit: 10 },
+      });
+
+      const response = JSON.parse(result.content[0].text);
+      expect(response.success).toBe(true);
+      
+      // Find the hypothesis node in the results
+      const hypothesisNode = response.results.nodes.find((n: any) => n.nodeId === hypothesisId);
+      expect(hypothesisNode).toBeDefined();
+      
+      // Verify parent information is correctly retrieved
+      expect(hypothesisNode.parent).toBeDefined();
+      expect(hypothesisNode.parent.nodeId).toBe(problemId);
+      
+      // Verify edges are correctly retrieved
+      expect(hypothesisNode.edges.length).toBe(1);
+      expect(hypothesisNode.edges[0].direction).toBe('to');
+      expect(hypothesisNode.edges[0].targetNodeId).toBe(problemId);
+    });
+
+    it('should use parent index for efficient debug path building', async () => {
+      const service = new GraphService();
+      await service.initialize();
+
+      // Create a deep path: problem -> hypothesis -> experiment -> observation -> solution
+      const problem = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'problem',
+        content: 'Deep problem',
+      });
+      const problemId = JSON.parse(problem.content[0].text).nodeId;
+
+      const hypothesis = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'hypothesis',
+        content: 'Deep hypothesis',
+        parentId: problemId,
+      });
+      const hypothesisId = JSON.parse(hypothesis.content[0].text).nodeId;
+
+      const experiment = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'experiment',
+        content: 'Deep experiment',
+        parentId: hypothesisId,
+      });
+      const experimentId = JSON.parse(experiment.content[0].text).nodeId;
+
+      const observation = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'observation',
+        content: 'Deep observation',
+        parentId: experimentId,
+      });
+      const observationId = JSON.parse(observation.content[0].text).nodeId;
+
+      const solution = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'solution',
+        content: 'Deep solution',
+        parentId: observationId,
+      });
+      const solutionId = JSON.parse(solution.content[0].text).nodeId;
+
+      // Connect solution to problem
+      await service.connect({
+        action: ActionType.CONNECT,
+        from: solutionId,
+        to: problemId,
+        type: 'solves',
+      });
+
+      // Query for similar problems to trigger debug path building
+      await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'problem',
+        content: 'Another deep problem',
+      });
+
+      const result = await service.query({
+        action: ActionType.QUERY,
+        type: 'similar-problems',
+        parameters: {
+          pattern: 'deep problem',
+          limit: 5,
+        },
+      });
+
+      const response = JSON.parse(result.content[0].text);
+      const problemWithSolution = response.results.problems.find((p: any) => p.nodeId === problemId);
+      
+      if (problemWithSolution && problemWithSolution.solutions.length > 0) {
+        const debugPath = problemWithSolution.solutions[0].debugPath;
+        expect(debugPath).toBeDefined();
+        expect(debugPath.length).toBeGreaterThanOrEqual(2); // At least problem and solution
+        
+        // Verify the path includes the problem and solution
+        const pathNodeIds = debugPath.map((n: any) => n.nodeId);
+        expect(pathNodeIds).toContain(problemId);
+        expect(pathNodeIds).toContain(solutionId);
+        
+        // The first node should be the problem
+        expect(debugPath[0].nodeId).toBe(problemId);
+        
+        // The last node should be the solution
+        expect(debugPath[debugPath.length - 1].nodeId).toBe(solutionId);
+      }
+    });
+
+    it('should handle complex graph structures with multiple edge types', async () => {
+      const service = new GraphService();
+      await service.initialize();
+
+      // Create nodes
+      const hyp1 = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'hypothesis',
+        content: 'Hypothesis 1',
+      });
+      const hypId1 = JSON.parse(hyp1.content[0].text).nodeId;
+
+      const hyp2 = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'hypothesis',
+        content: 'Hypothesis 2',
+      });
+      const hypId2 = JSON.parse(hyp2.content[0].text).nodeId;
+
+      const exp = await service.create({
+        action: ActionType.CREATE,
+        nodeType: 'experiment',
+        content: 'Test experiment',
+      });
+      const expId = JSON.parse(exp.content[0].text).nodeId;
+
+      // Create multiple edges
+      await service.connect({
+        action: ActionType.CONNECT,
+        from: expId,
+        to: hypId1,
+        type: 'supports',
+      });
+
+      await service.connect({
+        action: ActionType.CONNECT,
+        from: expId,
+        to: hypId2,
+        type: 'contradicts',
+      });
+
+      // Verify edges are properly indexed
+      // @ts-ignore - access private property for testing
+      const expEdges = service.edgesByNode.get(expId);
+      expect(expEdges?.outgoing.length).toBe(2);
+      
+      const supportEdge = expEdges?.outgoing.find(e => e.type === 'supports');
+      expect(supportEdge?.to).toBe(hypId1);
+      
+      const contradictEdge = expEdges?.outgoing.find(e => e.type === 'contradicts');
+      expect(contradictEdge?.to).toBe(hypId2);
     });
   });
 });
