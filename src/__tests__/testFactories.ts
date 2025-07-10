@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
 import type { Node, Edge } from "../types/graph.js";
-import { ActionType } from "../types/graphActions.js";
 
 // Test data factories for cleaner test code
 

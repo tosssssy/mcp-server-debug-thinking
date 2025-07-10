@@ -1,8 +1,15 @@
 import fs from "fs/promises";
 import { createReadStream } from "fs";
 import * as readline from "readline";
-import path from "path";
 import { logger } from "./logger.js";
+
+// Type for file system errors
+interface FileSystemError extends Error {
+  code?: string;
+  errno?: number;
+  syscall?: string;
+  path?: string;
+}
 
 export async function ensureDirectory(dirPath: string): Promise<void> {
   try {
@@ -18,7 +25,7 @@ export async function readJsonFile<T>(filePath: string): Promise<T | null> {
     const data = await fs.readFile(filePath, "utf-8");
     return JSON.parse(data);
   } catch (error) {
-    if ((error as any).code === "ENOENT") {
+    if ((error as FileSystemError).code === "ENOENT") {
       return null;
     }
     logger.error(`Failed to read JSON file ${filePath}:`, error);
@@ -40,7 +47,7 @@ export async function listJsonFiles(dirPath: string): Promise<string[]> {
     const files = await fs.readdir(dirPath);
     return files.filter((f) => f.endsWith(".json"));
   } catch (error) {
-    if ((error as any).code === "ENOENT") {
+    if ((error as FileSystemError).code === "ENOENT") {
       return [];
     }
     logger.error(`Failed to list files in ${dirPath}:`, error);
@@ -72,14 +79,14 @@ export async function readJsonLines<T>(filePath: string): Promise<T[]> {
       if (line.trim()) {
         try {
           lines.push(JSON.parse(line));
-        } catch (parseError) {
+        } catch (_parseError) {
           logger.warn(`Skipping invalid JSON line in ${filePath}: ${line}`);
         }
       }
     }
     return lines;
   } catch (error) {
-    if ((error as any).code === "ENOENT") {
+    if ((error as FileSystemError).code === "ENOENT") {
       return [];
     }
     logger.error(`Failed to read JSONL file ${filePath}:`, error);
@@ -99,13 +106,13 @@ export async function* readJsonLinesStream<T>(filePath: string): AsyncGenerator<
       if (line.trim()) {
         try {
           yield JSON.parse(line) as T;
-        } catch (parseError) {
+        } catch (_parseError) {
           logger.warn(`Skipping invalid JSON line in ${filePath}: ${line}`);
         }
       }
     }
   } catch (error) {
-    if ((error as any).code === "ENOENT") {
+    if ((error as FileSystemError).code === "ENOENT") {
       return;
     }
     logger.error(`Failed to stream JSONL file ${filePath}:`, error);

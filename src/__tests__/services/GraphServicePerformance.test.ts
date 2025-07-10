@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphService } from "../../services/GraphService.js";
 import { ActionType } from "../../types/graphActions.js";
+import type { NodeType } from "../../types/graph.js";
 
 // Test suite for performance characteristics
 describe("GraphService - Performance Tests", () => {
@@ -17,7 +18,7 @@ describe("GraphService - Performance Tests", () => {
       const fs = await import("fs/promises");
       try {
         await fs.rm(process.env.DEBUG_DATA_DIR, { recursive: true, force: true });
-      } catch (error) {
+      } catch (_error) {
         // Directory might not exist
       }
       delete process.env.DEBUG_DATA_DIR;
@@ -152,7 +153,7 @@ describe("GraphService - Performance Tests", () => {
 
         // Measure query performance at this checkpoint
         const startTime = performance.now();
-        const result = await graphService.query({
+        const _result = await graphService.query({
           action: ActionType.QUERY,
           type: "similar-problems",
           parameters: {
@@ -282,8 +283,8 @@ describe("GraphService - Performance Tests", () => {
   describe("Algorithm efficiency", () => {
     it("should efficiently compute longest common substring", async () => {
       // Test the LCS algorithm performance
-      const text1 = "a".repeat(500) + "unique_pattern" + "b".repeat(500);
-      const text2 = "c".repeat(500) + "unique_pattern" + "d".repeat(500);
+      const text1 = `${"a".repeat(500)}unique_pattern${"b".repeat(500)}`;
+      const text2 = `${"c".repeat(500)}unique_pattern${"d".repeat(500)}`;
 
       const startTime = performance.now();
       // @ts-ignore - accessing private method for testing
@@ -431,7 +432,7 @@ describe("GraphService - Performance Tests", () => {
         ][i % 6];
         await graphService.create({
           action: ActionType.CREATE,
-          nodeType: nodeType as any,
+          nodeType: nodeType as NodeType,
           content: `Node ${i} of type ${nodeType}`,
         });
       }
@@ -535,7 +536,7 @@ describe("GraphService - Performance Tests", () => {
       const hypId2 = JSON.parse(hyp2.content[0].text).nodeId;
 
       // 3. Create experiments
-      const exp1 = await graphService.create({
+      const _exp1 = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "experiment",
         content: "Check token expiration time",
@@ -551,7 +552,7 @@ describe("GraphService - Performance Tests", () => {
       const expId2 = JSON.parse(exp2.content[0].text).nodeId;
 
       // 4. Create observation
-      const obs = await graphService.create({
+      const _obs = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "observation",
         content: "User object is null when token is valid but user deleted",

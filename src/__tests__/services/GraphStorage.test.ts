@@ -21,7 +21,7 @@ describe("GraphStorage", () => {
     try {
       // Remove the entire test directory
       await fs.rm(testDataDir, { recursive: true, force: true });
-    } catch (error) {
+    } catch (_error) {
       // Directory might not exist
     }
     // Clean up environment variable
@@ -212,15 +212,15 @@ describe("GraphStorage", () => {
       const loadedGraph = await storage.loadGraph();
 
       expect(loadedGraph).not.toBeNull();
-      expect(loadedGraph!.nodes.size).toBe(1);
-      expect(loadedGraph!.edges.size).toBe(1);
-      expect(loadedGraph!.roots).toEqual(["node-1"]);
+      expect(loadedGraph?.nodes.size).toBe(1);
+      expect(loadedGraph?.edges.size).toBe(1);
+      expect(loadedGraph?.roots).toEqual(["node-1"]);
 
-      const loadedNode = loadedGraph!.nodes.get("node-1");
+      const loadedNode = loadedGraph?.nodes.get("node-1");
       expect(loadedNode?.content).toBe("Saved problem");
       expect(loadedNode?.metadata.tags).toEqual(["saved"]);
 
-      const loadedEdge = loadedGraph!.edges.get("edge-1");
+      const loadedEdge = loadedGraph?.edges.get("edge-1");
       expect(loadedEdge?.type).toBe("decomposes");
       expect(loadedEdge?.strength).toBe(0.9);
     });
@@ -254,16 +254,13 @@ describe("GraphStorage", () => {
         },
       };
 
-      await fs.writeFile(
-        nodesFile,
-        JSON.stringify(node1v1) + "\n" + JSON.stringify(node1v2) + "\n"
-      );
+      await fs.writeFile(nodesFile, `${JSON.stringify(node1v1)}\n${JSON.stringify(node1v2)}\n`);
 
       const loadedGraph = await storage.loadGraph();
       expect(loadedGraph).not.toBeNull();
-      expect(loadedGraph!.nodes.size).toBe(1);
+      expect(loadedGraph?.nodes.size).toBe(1);
 
-      const loadedNode = loadedGraph!.nodes.get("node-1");
+      const loadedNode = loadedGraph?.nodes.get("node-1");
       expect(loadedNode?.content).toBe("Version 2"); // Latest version
     });
 
@@ -277,7 +274,7 @@ describe("GraphStorage", () => {
       // Should not throw, just return default metadata
       const graph = await storage.loadGraph();
       expect(graph).not.toBeNull();
-      expect(graph!.metadata.sessionCount).toBe(0);
+      expect(graph?.metadata.sessionCount).toBe(0);
     });
   });
 
@@ -319,7 +316,7 @@ describe("GraphStorage", () => {
       const result = await storage.loadGraph();
       expect(result).not.toBeNull();
       // The graph should have default metadata due to error handling
-      expect(result!.metadata.sessionCount).toBe(0);
+      expect(result?.metadata.sessionCount).toBe(0);
     });
 
     it("should handle edge metadata parsing", async () => {
@@ -341,7 +338,7 @@ describe("GraphStorage", () => {
       // Load and verify metadata is preserved
       const graph = await storage.loadGraph();
       expect(graph).not.toBeNull();
-      const loadedEdge = graph!.edges.get("edge-with-meta");
+      const loadedEdge = graph?.edges.get("edge-with-meta");
       expect(loadedEdge?.metadata).toBeDefined();
       expect(loadedEdge?.metadata?.reason).toBe("test reason");
     });

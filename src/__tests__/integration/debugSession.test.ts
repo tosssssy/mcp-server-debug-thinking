@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphService } from "../../services/GraphService.js";
 import { ActionType } from "../../types/graphActions.js";
+import type { SimilarProblemsResult } from "../../types/graphActions.js";
 
 describe("Debug Session Integration Tests", () => {
   let graphService: GraphService;
@@ -16,7 +17,7 @@ describe("Debug Session Integration Tests", () => {
       const fs = await import("fs/promises");
       try {
         await fs.rm(process.env.DEBUG_DATA_DIR, { recursive: true, force: true });
-      } catch (error) {
+      } catch (_error) {
         // Directory might not exist
       }
       delete process.env.DEBUG_DATA_DIR;
@@ -63,7 +64,7 @@ describe("Debug Session Integration Tests", () => {
         confidence: 70,
       },
     });
-    const hypothesis2 = JSON.parse(hypothesis2Result.content[0].text);
+    const _hypothesis2 = JSON.parse(hypothesis2Result.content[0].text);
 
     // 3. Create and conduct experiments
     const experimentResult = await graphService.create({
@@ -220,15 +221,18 @@ describe("Debug Session Integration Tests", () => {
       },
     });
 
-    const search = JSON.parse(searchResult.content[0].text);
+    const search = JSON.parse(searchResult.content[0].text) as {
+      success: boolean;
+      results: SimilarProblemsResult;
+    };
     expect(search.success).toBe(true);
     expect(search.results.problems.length).toBeGreaterThanOrEqual(3); // Should find at least 3 TypeErrors
 
     // Verify that similar problems have solutions
-    const typeErrorProblems = search.results.problems.filter((p: any) =>
+    const typeErrorProblems = search.results.problems.filter((p) =>
       p.content.includes("TypeError")
     );
     expect(typeErrorProblems.length).toBeGreaterThanOrEqual(3);
-    expect(typeErrorProblems.every((p: any) => p.solutions.length > 0)).toBe(true);
+    expect(typeErrorProblems.every((p) => p.solutions.length > 0)).toBe(true);
   });
 });

@@ -2,6 +2,47 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphService } from "../../services/GraphService.js";
 import { ActionType } from "../../types/graphActions.js";
 
+// Type for parsed response with similarProblems
+interface ParsedResponseWithSimilarProblems {
+  similarProblems?: Array<{
+    nodeId: string;
+    content: string;
+    similarity: number;
+    status?: "open" | "investigating" | "solved" | "abandoned";
+    solutions: Array<{
+      nodeId: string;
+      content: string;
+      verified: boolean;
+    }>;
+  }>;
+  [key: string]: unknown;
+}
+
+// Type for parsed query response
+interface ParsedQueryResponse {
+  success: boolean;
+  results?: {
+    problems: Array<{
+      nodeId: string;
+      content: string;
+      similarity: number;
+      errorType?: string;
+      status: "open" | "investigating" | "solved" | "abandoned";
+      solutions: Array<{
+        nodeId: string;
+        content: string;
+        verified: boolean;
+        debugPath?: Array<{
+          nodeId: string;
+          type: string;
+          content: string;
+        }>;
+      }>;
+    }>;
+  };
+  [key: string]: unknown;
+}
+
 // Test suite focused on the improved similarity calculation features
 describe("GraphService - Enhanced Similarity Calculation", () => {
   let graphService: GraphService;
@@ -19,7 +60,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       const fs = await import("fs/promises");
       try {
         await fs.rm(process.env.DEBUG_DATA_DIR, { recursive: true, force: true });
-      } catch (error) {
+      } catch (_error) {
         // Directory might not exist
       }
       delete process.env.DEBUG_DATA_DIR;
@@ -41,12 +82,12 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "TypeError: Cannot read property 'bar' of undefined",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         expect(response.similarProblems).toBeDefined();
-        expect(response.similarProblems.length).toBeGreaterThan(0);
+        expect(response.similarProblems?.length).toBeGreaterThan(0);
 
         // Should have high similarity due to same error type
-        const similarity = response.similarProblems[0].similarity;
+        const similarity = response.similarProblems?.[0].similarity;
         expect(similarity).toBeGreaterThanOrEqual(0.2); // At least the error type contribution
       });
 
@@ -63,7 +104,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Type Error: Different format but same category",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           const similarity = response.similarProblems[0].similarity;
           expect(similarity).toBeGreaterThan(0.12); // Should get group match score
@@ -90,10 +131,10 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "not defined error in module",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           // Should find the ReferenceError problems with grouped scoring
-          const refErrors = response.similarProblems.filter((p: any) =>
+          const _refErrors = response.similarProblems.filter((p) =>
             p.content.toLowerCase().includes("reference")
           );
           // ReferenceError関連の問題が見つからなくても他の問題は見つかる可能性があるため削除
@@ -113,10 +154,10 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "NetworkError: connection timeout",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         // If similar problems found, they should have low similarity
         if (response.similarProblems && response.similarProblems.length > 0) {
-          const typeErrorProblem = response.similarProblems.find((p: any) =>
+          const typeErrorProblem = response.similarProblems.find((p) =>
             p.content.includes("TypeError")
           );
           if (typeErrorProblem) {
@@ -140,7 +181,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Unable to connect to database server at localhost:3306",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
 
@@ -162,7 +203,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Problem XYZ happened",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         // Should have low similarity due to no significant common substring
         if (response.similarProblems && response.similarProblems.length > 0) {
           expect(response.similarProblems[0].similarity).toBeLessThan(0.6);
@@ -229,7 +270,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Module not found: util",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
 
@@ -256,7 +297,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: longText2,
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           // Should have good similarity despite word differences
           expect(response.similarProblems[0].similarity).toBeGreaterThan(0.4);
@@ -276,7 +317,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Authentification failed", // Common typo
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           // Should still match well despite typo
           expect(response.similarProblems[0].similarity).toBeGreaterThanOrEqual(0.5);
@@ -298,7 +339,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Cannot read property 'size' of undefined",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
 
@@ -319,7 +360,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Unable to handle the user request",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           // Should partially match "unable to" phrase
           expect(response.similarProblems[0].similarity).toBeGreaterThan(0.2);
@@ -339,7 +380,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Failed to authenticate: Permission denied for user account",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           // Should match both "failed to" and "permission denied"
           expect(response.similarProblems[0].similarity).toBeGreaterThan(0.25);
@@ -359,7 +400,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Error: Maximum call stack limit reached",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           // Should match the stack overflow pattern
           expect(response.similarProblems[0].similarity).toBeGreaterThan(0.25);
@@ -381,7 +422,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "database connection error - timeout exceeded, will retry",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
 
@@ -402,7 +443,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Config file missing",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           // Should match "config" with "configuration" and "file"
           expect(response.similarProblems[0].similarity).toBeGreaterThan(0.2);
@@ -422,7 +463,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Error at line 100 in file b.py",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           // Should match "Error", "line", "file" but not numbers or short tokens
           expect(response.similarProblems[0].similarity).toBeGreaterThan(0.2);
@@ -445,7 +486,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Module 'express' not found in 'app.js'",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
 
@@ -466,7 +507,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Error in getUserById() function call",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           // Should match the function name
           expect(response.similarProblems[0].similarity).toBeGreaterThan(0.2);
@@ -486,7 +527,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Cannot parse `config.json` file",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           // Should match config.json despite different quotes
           expect(response.similarProblems[0].similarity).toBeGreaterThan(0.2);
@@ -509,7 +550,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
             "TypeError: Cannot read property 'email' of undefined in UserService.getProfile()",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
 
@@ -535,10 +576,10 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Invalid syntax in configuration file",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         // Should have very low or no similarity
         if (response.similarProblems && response.similarProblems.length > 0) {
-          const networkProblem = response.similarProblems.find((p: any) =>
+          const networkProblem = response.similarProblems.find((p) =>
             p.content.includes("Network")
           );
           if (networkProblem) {
@@ -560,7 +601,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
           content: "Exact same error message",
         });
 
-        const response = JSON.parse(result.content[0].text);
+        const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
         if (response.similarProblems && response.similarProblems.length > 0) {
           expect(response.similarProblems[0].similarity).toBeLessThanOrEqual(1.0);
           expect(response.similarProblems[0].similarity).toBeGreaterThan(0.45);
@@ -599,12 +640,12 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         },
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedQueryResponse;
       expect(response.success).toBe(true);
 
       // Should only return highly similar problems
-      if (response.results.problems.length > 0) {
-        response.results.problems.forEach((p: any) => {
+      if (response.results && response.results.problems.length > 0) {
+        response.results.problems.forEach((p) => {
           expect(p.similarity).toBeGreaterThanOrEqual(0.5);
         });
       }
@@ -629,9 +670,9 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         },
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedQueryResponse;
       expect(response.success).toBe(true);
-      expect(response.results.problems.length).toBeLessThanOrEqual(5);
+      expect(response.results?.problems.length).toBeLessThanOrEqual(5);
     });
 
     it("should prioritize solved problems even with lower similarity", async () => {
@@ -690,12 +731,12 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       });
       const queryTime = Date.now() - startTime;
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedQueryResponse;
       expect(response.success).toBe(true);
       expect(queryTime).toBeLessThan(200); // Should be fast even with complex similarity calculation
 
       // Should find relevant results
-      if (response.results.problems.length > 0) {
+      if (response.results && response.results.problems.length > 0) {
         const topResult = response.results.problems[0];
         expect(topResult.content).toContain("TypeError");
       }
@@ -733,7 +774,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
 
       // Should primarily find TypeError problems
       if (response.similarProblems && response.similarProblems.length > 0) {
-        const typeErrorCount = response.similarProblems.filter((p: any) =>
+        const typeErrorCount = response.similarProblems.filter((p) =>
           p.content.includes("TypeError")
         ).length;
         expect(typeErrorCount).toBeGreaterThan(response.similarProblems.length * 0.8);
@@ -758,14 +799,14 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         },
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedQueryResponse;
       expect(response.success).toBe(true);
       // Should still return results, but with low similarity
     });
 
     it("should handle very long texts", async () => {
-      const longText1 = "Error: " + "x".repeat(1000) + " in module";
-      const longText2 = "Error: " + "x".repeat(990) + " in module";
+      const longText1 = `Error: ${"x".repeat(1000)} in module`;
+      const longText2 = `Error: ${"x".repeat(990)} in module`;
 
       await graphService.create({
         action: ActionType.CREATE,
@@ -874,7 +915,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       expect(response.similarProblems.length).toBeGreaterThan(0);
 
       // All three problems are about the same React issue
-      response.similarProblems.forEach((p: any) => {
+      response.similarProblems.forEach((p) => {
         expect(p.similarity).toBeGreaterThan(0.25);
       });
     });
@@ -901,11 +942,11 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       const response = JSON.parse(result.content[0].text);
       if (response.similarProblems && response.similarProblems.length > 0) {
         // Should match all connection refused errors
-        const connRefusedProblems = response.similarProblems.filter((p: any) =>
+        const connRefusedProblems = response.similarProblems.filter((p) =>
           p.content.includes("ECONNREFUSED")
         );
         expect(connRefusedProblems.length).toBeGreaterThan(0);
-        connRefusedProblems.forEach((p: any) => {
+        connRefusedProblems.forEach((p) => {
           expect(p.similarity).toBeGreaterThan(0.15);
         });
       }
@@ -933,7 +974,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       const response = JSON.parse(result.content[0].text);
       if (response.similarProblems && response.similarProblems.length > 0) {
         // Should match API user endpoint 404 errors
-        response.similarProblems.forEach((p: any) => {
+        response.similarProblems.forEach((p) => {
           expect(p.content).toMatch(/404|users/i);
           expect(p.similarity).toBeGreaterThan(0.2);
         });
@@ -963,7 +1004,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       const response = JSON.parse(result.content[0].text);
       if (response.similarProblems && response.similarProblems.length > 0) {
         // Should match module resolution errors
-        response.similarProblems.forEach((p: any) => {
+        response.similarProblems.forEach((p) => {
           expect(p.content.toLowerCase()).toContain("module not found");
           expect(p.similarity).toBeGreaterThan(0.2);
         });

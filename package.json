@@ -19,6 +19,7 @@
     "rebuild": "npm run clean && npm run build",
     "dev": "tsc --watch",
     "prepare": "npm run build",
+    "check": "biome check --write src",
     "format": "biome format --write src",
     "test": "vitest",
     "test:coverage": "vitest --coverage",

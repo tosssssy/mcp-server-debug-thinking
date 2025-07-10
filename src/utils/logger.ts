@@ -23,43 +23,43 @@ export class Logger {
     }
   }
 
-  debug(message: string, ...args: any[]): void {
+  debug(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.DEBUG) {
       console.error(chalk.gray(`[DEBUG] ${message}`), ...args);
     }
   }
 
-  info(message: string, ...args: any[]): void {
+  info(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.INFO) {
       console.error(message, ...args);
     }
   }
 
-  warn(message: string, ...args: any[]): void {
+  warn(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.WARN) {
       console.error(chalk.yellow(message), ...args);
     }
   }
 
-  error(message: string, ...args: any[]): void {
+  error(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.ERROR) {
       console.error(chalk.red(message), ...args);
     }
   }
 
-  success(message: string, ...args: any[]): void {
+  success(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.INFO) {
       console.error(chalk.green(message), ...args);
     }
   }
 
-  dim(message: string, ...args: any[]): void {
+  dim(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.INFO) {
       console.error(chalk.dim(message), ...args);
     }
   }
 
-  bold(message: string, ...args: any[]): void {
+  bold(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.INFO) {
       console.error(chalk.bold(message), ...args);
     }
@@ -75,7 +75,7 @@ export class Logger {
     }
   }
 
-  search(query: any, resultCount: number): void {
+  search(query: unknown, resultCount: number): void {
     if (this.level <= LogLevel.INFO) {
       console.error(chalk.cyan("🔍 Searching with query:"), query);
       console.error(chalk.green(`✓ Found ${resultCount} matches`));

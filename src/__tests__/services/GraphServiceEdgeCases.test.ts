@@ -17,7 +17,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
       const fs = await import("fs/promises");
       try {
         await fs.rm(process.env.DEBUG_DATA_DIR, { recursive: true, force: true });
-      } catch (error) {
+      } catch (_error) {
         // Directory might not exist
       }
       delete process.env.DEBUG_DATA_DIR;
@@ -85,7 +85,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
       const graph = graphService.getGraph();
       const node = graph.nodes.get(response.nodeId);
       expect(node?.metadata).toBeDefined();
-      expect((node as any).metadata.confidence).toBe(50); // Default for hypothesis
+      expect((node?.metadata as { confidence?: number }).confidence).toBe(50); // Default for hypothesis
     });
 
     it("should handle null values in metadata", async () => {
@@ -94,7 +94,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
         nodeType: "solution",
         content: "Test solution",
         metadata: {
-          verified: null as any,
+          verified: null as unknown as boolean,
           customField: null,
         },
       });
@@ -106,7 +106,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
 
   describe("Extreme length handling", () => {
     it("should handle very long content", async () => {
-      const longContent = "A".repeat(10000) + " error message " + "B".repeat(10000);
+      const longContent = `${"A".repeat(10000)} error message ${"B".repeat(10000)}`;
 
       const result = await graphService.create({
         action: ActionType.CREATE,
@@ -125,7 +125,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
 
     it("should handle similarity search with very long patterns", async () => {
       // Create a problem with long content
-      const longProblem = "Error: " + "x".repeat(5000) + " in module";
+      const longProblem = `Error: ${"x".repeat(5000)} in module`;
       await graphService.create({
         action: ActionType.CREATE,
         nodeType: "problem",
@@ -133,7 +133,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
       });
 
       // Search with a long pattern
-      const longPattern = "Error: " + "x".repeat(4999) + " in module";
+      const longPattern = `Error: ${"x".repeat(4999)} in module`;
       const result = await graphService.query({
         action: ActionType.QUERY,
         type: "similar-problems",
@@ -461,7 +461,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
     it("should handle invalid node types", async () => {
       const result = await graphService.create({
         action: ActionType.CREATE,
-        nodeType: "invalid-type" as any,
+        nodeType: "invalid-type" as never,
         content: "Test content",
       });
 
@@ -489,7 +489,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
         action: ActionType.CONNECT,
         from: nodeId1,
         to: nodeId2,
-        type: "invalid-edge-type" as any,
+        type: "invalid-edge-type" as never,
       });
 
       const response = JSON.parse(result.content[0].text);
@@ -644,7 +644,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
       // Create many connected nodes
       const connectedCount = 50;
       for (let i = 0; i < connectedCount; i++) {
-        const node = await graphService.create({
+        const _node = await graphService.create({
           action: ActionType.CREATE,
           nodeType: "hypothesis",
           content: `Connected hypothesis ${i}`,

@@ -49,7 +49,7 @@ export interface Node {
     status?: "open" | "investigating" | "solved" | "abandoned";
     tags: string[];
     // ノードタイプ固有の拡張フィールド用
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -67,7 +67,7 @@ export interface Edge {
     reasoning?: string;
     evidence?: string;
     createdAt: Date;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -127,7 +127,7 @@ export interface ExperimentNode extends Node {
     code?: string;
     commands?: string[];
     expectedOutcome: string;
-    environment?: Record<string, any>;
+    environment?: Record<string, unknown>;
   };
 }
 
@@ -138,7 +138,7 @@ export interface ObservationNode extends Node {
   type: "observation";
   metadata: Node["metadata"] & {
     output?: string;
-    metrics?: Record<string, any>;
+    metrics?: Record<string, unknown>;
     unexpected?: boolean;
   };
 }

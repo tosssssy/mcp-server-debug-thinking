@@ -141,7 +141,10 @@ export class GraphService {
       // ノードとエッジを永続化ストレージに保存
       await this.storage.saveNode(node);
       if (edgeId) {
-        await this.storage.saveEdge(this.graph.edges.get(edgeId)!);
+        const edge = this.graph.edges.get(edgeId);
+        if (edge) {
+          await this.storage.saveEdge(edge);
+        }
       }
 
       // グラフメタデータも更新して保存
@@ -154,7 +157,7 @@ export class GraphService {
         if (!this.errorTypeIndex.has(errorType)) {
           this.errorTypeIndex.set(errorType, new Set());
         }
-        this.errorTypeIndex.get(errorType)!.add(nodeId);
+        this.errorTypeIndex.get(errorType)?.add(nodeId);
         logger.debug(`Added node ${nodeId} to error type index: ${errorType}`);
       }
 
@@ -285,11 +288,11 @@ export class GraphService {
     const startTime = Date.now();
 
     try {
-      let results: any;
+      let results: unknown;
 
       switch (action.type) {
         case "similar-problems":
-          results = await this.findSimilarProblems(action.parameters);
+          results = await this.findSimilarProblems(action.parameters || {});
           break;
         case "recent-activity":
           results = await this.getRecentActivity(action.parameters);
@@ -365,7 +368,7 @@ export class GraphService {
     to: string,
     type: EdgeType,
     strength: number = 1,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Edge {
     return {
       id: uuidv4(),
@@ -415,8 +418,14 @@ export class GraphService {
    * - 問題ノード: 関連する問題のIDリスト
    * - 仮説ノード: 推奨される実験方法
    */
-  private async generateSuggestions(node: Node): Promise<any> {
-    const suggestions: any = {};
+  private async generateSuggestions(node: Node): Promise<{
+    relatedProblems?: string[];
+    recommendedExperiments?: string[];
+  }> {
+    const suggestions: {
+      relatedProblems?: string[];
+      recommendedExperiments?: string[];
+    } = {};
 
     if (node.type === "problem") {
       // 関連する問題を最大3件まで検索
@@ -449,8 +458,28 @@ export class GraphService {
    * 類似度計算はエラータイプ、キーフレーズ、単語ベースで実施
    * 解決済み問題を優先的に返す
    */
-  private async findSimilarProblems(params: any): Promise<SimilarProblemsResult> {
-    const problems: any[] = [];
+  private async findSimilarProblems(params: {
+    pattern?: string;
+    limit?: number;
+    minSimilarity?: number;
+  }): Promise<SimilarProblemsResult> {
+    const problems: Array<{
+      nodeId: string;
+      content: string;
+      similarity: number;
+      errorType?: string;
+      status: "open" | "investigating" | "solved" | "abandoned";
+      solutions: Array<{
+        nodeId: string;
+        content: string;
+        verified: boolean;
+        debugPath?: Array<{
+          nodeId: string;
+          type: NodeType;
+          content: string;
+        }>;
+      }>;
+    }> = [];
     const pattern = params?.pattern || "";
     const minSimilarity = params?.minSimilarity || 0.2;
     const errorType = this.extractErrorType(pattern);
@@ -460,12 +489,22 @@ export class GraphService {
 
     if (errorType && this.errorTypeIndex.has(errorType)) {
       // 同一エラータイプの問題ノードのみを検索対象に
-      candidateNodeIds = this.errorTypeIndex.get(errorType)!;
-      logger.debug(`Searching ${candidateNodeIds.size} nodes with error type: ${errorType}`);
+      const errorSet = this.errorTypeIndex.get(errorType);
+      if (errorSet) {
+        candidateNodeIds = errorSet;
+        logger.debug(`Searching ${candidateNodeIds.size} nodes with error type: ${errorType}`);
+      } else {
+        candidateNodeIds = new Set();
+      }
     } else if (!errorType && this.errorTypeIndex.has("other")) {
       // エラータイプが抽出できない場合は 'other' カテゴリを検索
-      candidateNodeIds = this.errorTypeIndex.get("other")!;
-      logger.debug(`Searching ${candidateNodeIds.size} nodes without specific error type`);
+      const otherSet = this.errorTypeIndex.get("other");
+      if (otherSet) {
+        candidateNodeIds = otherSet;
+        logger.debug(`Searching ${candidateNodeIds.size} nodes without specific error type`);
+      } else {
+        candidateNodeIds = new Set();
+      }
     } else {
       // インデックスが未構築の場合は全問題ノードを総当たり（フォールバック）
       candidateNodeIds = new Set();
@@ -493,7 +532,7 @@ export class GraphService {
           nodeId: node.id,
           content: node.content,
           similarity,
-          errorType: nodeErrorType,
+          errorType: nodeErrorType || undefined,
           status: (node as ProblemNode).metadata.status || "open",
           solutions,
         });
@@ -522,8 +561,26 @@ export class GraphService {
    * @param problemId 問題ノードのID
    * @returns 解決策情報の配列(検証済みフラグとデバッグパス付き)
    */
-  private findSolutionsForProblem(problemId: string): any[] {
-    const solutions: any[] = [];
+  private findSolutionsForProblem(problemId: string): Array<{
+    nodeId: string;
+    content: string;
+    verified: boolean;
+    debugPath?: Array<{
+      nodeId: string;
+      type: NodeType;
+      content: string;
+    }>;
+  }> {
+    const solutions: Array<{
+      nodeId: string;
+      content: string;
+      verified: boolean;
+      debugPath?: Array<{
+        nodeId: string;
+        type: NodeType;
+        content: string;
+      }>;
+    }> = [];
 
     for (const edge of this.graph.edges.values()) {
       if (edge.type === "solves" && edge.to === problemId) {
@@ -761,9 +818,13 @@ export class GraphService {
     const identifierPattern = /['"`]([^'"`]+)['"`]|(\w+)\(/g;
     const extractIdentifiers = (text: string) => {
       const identifiers = new Set<string>();
-      let match;
-      while ((match = identifierPattern.exec(text)) !== null) {
-        identifiers.add((match[1] || match[2]).toLowerCase());
+      let match: RegExpExecArray | null = identifierPattern.exec(text);
+      while (match !== null) {
+        const identifier = match[1] || match[2];
+        if (identifier) {
+          identifiers.add(identifier.toLowerCase());
+        }
+        match = identifierPattern.exec(text);
       }
       identifierPattern.lastIndex = 0;
       return identifiers;
@@ -927,7 +988,7 @@ export class GraphService {
    * 最近のアクティビティを取得
    * ノードを作成時刻の降順でソートして返す
    */
-  private async getRecentActivity(params: any): Promise<RecentActivityResult> {
+  private async getRecentActivity(params: { limit?: number } = {}): Promise<RecentActivityResult> {
     const limit = params?.limit;
 
     // limit が undefined の場合はデフォルト値を使用
@@ -971,7 +1032,7 @@ export class GraphService {
         }
 
         // 親ノードをインデックスから取得
-        let parent: any;
+        let parent: { nodeId: string; content: string; type: NodeType } | undefined;
         const parentId = this.parentIndex.get(node.id);
         if (parentId) {
           const parentNode = this.graph.nodes.get(parentId);
@@ -1015,13 +1076,19 @@ export class GraphService {
           if (!this.errorTypeIndex.has(errorType)) {
             this.errorTypeIndex.set(errorType, new Set());
           }
-          this.errorTypeIndex.get(errorType)!.add(nodeId);
+          const errorTypeSet = this.errorTypeIndex.get(errorType);
+          if (errorTypeSet) {
+            errorTypeSet.add(nodeId);
+          }
         } else {
           // エラータイプが不明な場合は "other" に分類
           if (!this.errorTypeIndex.has("other")) {
             this.errorTypeIndex.set("other", new Set());
           }
-          this.errorTypeIndex.get("other")!.add(nodeId);
+          const otherSet = this.errorTypeIndex.get("other");
+          if (otherSet) {
+            otherSet.add(nodeId);
+          }
         }
       }
     }
@@ -1046,7 +1113,10 @@ export class GraphService {
       if (!this.nodesByType.has(node.type)) {
         this.nodesByType.set(node.type, new Set());
       }
-      this.nodesByType.get(node.type)!.add(nodeId);
+      const nodeTypeSet = this.nodesByType.get(node.type);
+      if (nodeTypeSet) {
+        nodeTypeSet.add(nodeId);
+      }
     }
 
     // エッジ関係インデックスを構築
@@ -1087,7 +1157,10 @@ export class GraphService {
     if (!this.nodesByType.has(node.type)) {
       this.nodesByType.set(node.type, new Set());
     }
-    this.nodesByType.get(node.type)!.add(node.id);
+    const nodeTypeSet = this.nodesByType.get(node.type);
+    if (nodeTypeSet) {
+      nodeTypeSet.add(node.id);
+    }
 
     // エッジ関係インデックスを初期化
     this.edgesByNode.set(node.id, { incoming: [], outgoing: [] });

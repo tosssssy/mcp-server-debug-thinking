@@ -109,7 +109,7 @@ describe("format utils", () => {
     });
 
     it("should handle circular references gracefully", () => {
-      const data: any = { a: 1 };
+      const data: Record<string, unknown> = { a: 1 };
       data.circular = data; // Create circular reference
 
       // JSON.stringify should throw an error for circular references
@@ -125,7 +125,7 @@ describe("format utils", () => {
 
     it("should handle empty objects and arrays", () => {
       const emptyObj = {};
-      const emptyArr: any[] = [];
+      const emptyArr: unknown[] = [];
 
       const objResponse = createJsonResponse(emptyObj);
       const arrResponse = createJsonResponse(emptyArr);

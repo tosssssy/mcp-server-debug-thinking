@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   type Node,
   type Edge,
+  type EdgeType,
   type ProblemNode,
   type HypothesisNode,
   type ExperimentNode,
@@ -62,7 +63,7 @@ describe("Graph Types", () => {
       };
 
       expect(isHypothesisNode(hypothesisNode)).toBe(true);
-      expect(isHypothesisNode({ ...hypothesisNode, type: "problem" } as any)).toBe(false);
+      expect(isHypothesisNode({ ...hypothesisNode, type: "problem" } as Node)).toBe(false);
     });
 
     it("should correctly identify experiment nodes", () => {
@@ -79,7 +80,7 @@ describe("Graph Types", () => {
       };
 
       expect(isExperimentNode(experimentNode)).toBe(true);
-      expect(isExperimentNode({ ...experimentNode, type: "observation" } as any)).toBe(false);
+      expect(isExperimentNode({ ...experimentNode, type: "observation" } as Node)).toBe(false);
     });
 
     it("should correctly identify observation nodes", () => {
@@ -96,7 +97,7 @@ describe("Graph Types", () => {
       };
 
       expect(isObservationNode(observationNode)).toBe(true);
-      expect(isObservationNode({ ...observationNode, type: "learning" } as any)).toBe(false);
+      expect(isObservationNode({ ...observationNode, type: "learning" } as Node)).toBe(false);
     });
 
     it("should correctly identify learning nodes", () => {
@@ -115,7 +116,7 @@ describe("Graph Types", () => {
       };
 
       expect(isLearningNode(learningNode)).toBe(true);
-      expect(isLearningNode({ ...learningNode, type: "solution" } as any)).toBe(false);
+      expect(isLearningNode({ ...learningNode, type: "solution" } as Node)).toBe(false);
     });
 
     it("should correctly identify solution nodes", () => {
@@ -133,7 +134,7 @@ describe("Graph Types", () => {
       };
 
       expect(isSolutionNode(solutionNode)).toBe(true);
-      expect(isSolutionNode({ ...solutionNode, type: "problem" } as any)).toBe(false);
+      expect(isSolutionNode({ ...solutionNode, type: "problem" } as Node)).toBe(false);
     });
   });
 
@@ -174,7 +175,7 @@ describe("Graph Types", () => {
       edgeTypes.forEach((type) => {
         const edge: Edge = {
           id: `edge-${type}`,
-          type: type as any,
+          type: type as EdgeType,
           from: "a",
           to: "b",
           strength: 1,

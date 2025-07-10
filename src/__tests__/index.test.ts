@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { TOOL_NAME } from "../constants.js";
 
 // Since index.ts is a module with side effects (starts a server),
@@ -54,7 +54,7 @@ describe("MCP Server Configuration", () => {
       try {
         const content = await fs.readFile(indexPath, "utf-8");
         expect(content.startsWith("#!/usr/bin/env node")).toBe(true);
-      } catch (error) {
+      } catch (_error) {
         // File might not exist in test environment
         expect(true).toBe(true);
       }

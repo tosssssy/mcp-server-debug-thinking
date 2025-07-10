@@ -1,5 +1,8 @@
 import type { NodeType, EdgeType } from "./graph.js";
 
+// Re-export types that are used in interfaces
+export type { EdgeType } from "./graph.js";
+
 /**
  * グラフ操作用アクションタイプ
  * MCPツールが受け付ける3つの基本操作
@@ -30,7 +33,7 @@ export interface CreateAction extends BaseAction {
   metadata?: {
     confidence?: number;
     tags?: string[];
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -47,7 +50,7 @@ export interface ConnectAction extends BaseAction {
   metadata?: {
     reasoning?: string;
     evidence?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -131,7 +134,7 @@ export interface ConnectResponse {
  */
 export interface QueryResponse {
   success: boolean;
-  results?: any; // 実際の型はクエリタイプごとの専用インターフェースを参照
+  results?: unknown; // 実際の型はクエリタイプごとの専用インターフェースを参照
   message?: string;
   queryTime?: number; // クエリ実行時間(ミリ秒): パフォーマンス指標
 }

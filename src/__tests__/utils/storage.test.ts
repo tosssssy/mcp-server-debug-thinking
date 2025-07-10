@@ -20,7 +20,7 @@ describe("storage utils", () => {
     // Clean up test directory
     try {
       await fs.rm(testDir, { recursive: true, force: true });
-    } catch (error) {
+    } catch (_error) {
       // Directory might not exist
     }
   });
@@ -29,7 +29,7 @@ describe("storage utils", () => {
     // Clean up after tests
     try {
       await fs.rm(testDir, { recursive: true, force: true });
-    } catch (error) {
+    } catch (_error) {
       // Directory might not exist
     }
   });
@@ -235,8 +235,8 @@ describe("storage utils", () => {
       }
 
       // Read via stream
-      const results: any[] = [];
-      for await (const item of readJsonLinesStream(testJsonl)) {
+      const results: Array<{ id: number; data: string }> = [];
+      for await (const item of readJsonLinesStream<{ id: number; data: string }>(testJsonl)) {
         results.push(item);
       }
 
@@ -247,7 +247,7 @@ describe("storage utils", () => {
 
     it("should handle errors gracefully", async () => {
       // Non-existent file
-      const results: any[] = [];
+      const results: unknown[] = [];
 
       try {
         for await (const item of readJsonLinesStream(testJsonl)) {
@@ -266,8 +266,8 @@ describe("storage utils", () => {
 
       await fs.writeFile(testJsonl, '{"valid": 1}\n{invalid json}\n{"valid": 2}\n');
 
-      const results: any[] = [];
-      for await (const item of readJsonLinesStream(testJsonl)) {
+      const results: Array<{ valid: number }> = [];
+      for await (const item of readJsonLinesStream<{ valid: number }>(testJsonl)) {
         results.push(item);
       }
 
@@ -411,7 +411,7 @@ describe("storage utils", () => {
       // Mock fs.readdir to throw non-ENOENT error
       const originalReaddir = fs.readdir;
       const error = new Error("Permission denied");
-      (error as any).code = "EACCES"; // Not ENOENT
+      (error as Error & { code?: string }).code = "EACCES"; // Not ENOENT
       vi.spyOn(fs, "readdir").mockRejectedValueOnce(error);
 
       await expect(listJsonFiles(dirPath)).rejects.toThrow("Permission denied");
@@ -424,10 +424,10 @@ describe("storage utils", () => {
 
       // Create a mock error that's not ENOENT
       const error = new Error("Read permission denied");
-      (error as any).code = "EACCES";
+      (error as Error & { code?: string }).code = "EACCES";
 
       // Mock createReadStream to throw error
-      vi.spyOn(fs, "createReadStream" as any).mockImplementationOnce(() => {
+      vi.spyOn(require("fs"), "createReadStream").mockImplementationOnce(() => {
         const stream = new (require("stream").Readable)();
         setImmediate(() => stream.emit("error", error));
         return stream;

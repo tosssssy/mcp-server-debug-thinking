@@ -11,7 +11,7 @@ beforeEach(async () => {
   const testDataDir = path.join(__dirname, "test-data");
   try {
     await fs.rm(testDataDir, { recursive: true, force: true });
-  } catch (error) {
+  } catch (_error) {
     // Directory might not exist, which is fine
   }
 });
@@ -21,7 +21,7 @@ afterAll(async () => {
   const testDataDir = path.join(__dirname, "test-data");
   try {
     await fs.rm(testDataDir, { recursive: true, force: true });
-  } catch (error) {
+  } catch (_error) {
     // Directory might not exist, which is fine
   }
 });

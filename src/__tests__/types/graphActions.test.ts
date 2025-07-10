@@ -4,6 +4,7 @@ import {
   type CreateAction,
   type ConnectAction,
   type QueryAction,
+  type QueryType,
   getAutoEdgeType,
 } from "../../types/graphActions.js";
 
@@ -91,7 +92,7 @@ describe("Graph Actions", () => {
       queryTypes.forEach((queryType) => {
         const action: QueryAction = {
           action: ActionType.QUERY,
-          type: queryType as any,
+          type: queryType as QueryType,
         };
         expect(action.type).toBe(queryType);
       });

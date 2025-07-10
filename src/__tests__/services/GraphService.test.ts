@@ -1,7 +1,55 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphService } from "../../services/GraphService.js";
 import { ActionType } from "../../types/graphActions.js";
-import { NodeType } from "../../types/graph.js";
+import type { NodeType } from "../../types/graph.js";
+
+// Type for parsed response with similarProblems
+interface ParsedResponseWithSimilarProblems {
+  similarProblems?: Array<{
+    nodeId: string;
+    content: string;
+    similarity: number;
+    status?: "open" | "investigating" | "solved" | "abandoned";
+    solutions: Array<{
+      nodeId: string;
+      content: string;
+      verified: boolean;
+    }>;
+  }>;
+  [key: string]: unknown;
+}
+
+// Type for parsed query response
+interface ParsedQueryResponse {
+  success: boolean;
+  results?: {
+    problems?: Array<{
+      nodeId: string;
+      content: string;
+      similarity: number;
+      errorType?: string;
+      status: "open" | "investigating" | "solved" | "abandoned";
+      solutions: Array<{
+        nodeId: string;
+        content: string;
+        verified: boolean;
+        debugPath?: Array<{
+          nodeId: string;
+          type: string;
+          content: string;
+        }>;
+      }>;
+    }>;
+    nodes?: Array<{
+      nodeId: string;
+      type: NodeType;
+      content: string;
+      createdAt: string;
+    }>;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
 
 describe("GraphService", () => {
   let graphService: GraphService;
@@ -20,7 +68,7 @@ describe("GraphService", () => {
       try {
         // Remove the entire test directory, not just the subdirectory
         await fs.rm(process.env.DEBUG_DATA_DIR, { recursive: true, force: true });
-      } catch (error) {
+      } catch (_error) {
         // Directory might not exist
       }
       delete process.env.DEBUG_DATA_DIR;
@@ -38,7 +86,7 @@ describe("GraphService", () => {
         },
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
       expect(response.nodeId).toBeDefined();
       expect(response.message).toContain("Created problem node");
@@ -80,7 +128,7 @@ describe("GraphService", () => {
         parentId: "non-existent-id",
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(false);
       expect(response.message).toContain("Parent node non-existent-id not found");
     });
@@ -92,7 +140,7 @@ describe("GraphService", () => {
         content: "Root problem",
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       const graph = graphService.getGraph();
       expect(graph.roots).toContain(response.nodeId);
     });
@@ -127,15 +175,13 @@ describe("GraphService", () => {
         content: 'TypeError: Cannot read property "z" of undefined',
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
       expect(response.similarProblems).toBeDefined();
       expect(response.similarProblems.length).toBeGreaterThan(0);
 
       // Should find the TypeError problems with high similarity
-      const typeErrors = response.similarProblems.filter((p: any) =>
-        p.content.includes("TypeError")
-      );
+      const typeErrors = response.similarProblems.filter((p) => p.content.includes("TypeError"));
       expect(typeErrors.length).toBeGreaterThanOrEqual(2);
 
       // Should have high similarity scores for TypeErrors
@@ -149,7 +195,7 @@ describe("GraphService", () => {
         content: "Some hypothesis content",
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
       expect(response.similarProblems).toBeUndefined();
     });
@@ -186,13 +232,13 @@ describe("GraphService", () => {
         content: "Memory leak detected in event listeners cleanup",
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
 
       // Check if similarProblems exists and has content
       if (response.similarProblems && response.similarProblems.length > 0) {
         // Should include the solution
-        const problemWithSolution = response.similarProblems.find((p: any) =>
+        const problemWithSolution = response.similarProblems.find((p) =>
           p.content.includes("Memory leak in event listeners")
         );
 
@@ -241,13 +287,13 @@ describe("GraphService", () => {
         content: "API timeout error on /customers endpoint",
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
 
       // Check if similar problems were found
       if (response.similarProblems && response.similarProblems.length > 0) {
         // Find if there's a solved problem in the results
-        const solvedProblem = response.similarProblems.find((p: any) => p.status === "solved");
+        const solvedProblem = response.similarProblems.find((p) => p.status === "solved");
         if (solvedProblem) {
           // Check if it's prioritized (should be in the first few results)
           const solvedIndex = response.similarProblems.indexOf(solvedProblem);
@@ -283,24 +329,22 @@ describe("GraphService", () => {
         content: 'TypeError: Cannot read property "baz" of undefined',
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
 
       if (response.similarProblems && response.similarProblems.length > 0) {
         // TypeErrors should have higher similarity than ReferenceError
-        const typeErrorProblems = response.similarProblems.filter((p: any) =>
+        const typeErrorProblems = response.similarProblems.filter((p) =>
           p.content.includes("TypeError")
         );
-        const refErrorProblems = response.similarProblems.filter((p: any) =>
+        const refErrorProblems = response.similarProblems.filter((p) =>
           p.content.includes("ReferenceError")
         );
 
         if (typeErrorProblems.length > 0 && refErrorProblems.length > 0) {
           // Compare the highest similarity TypeError with the highest similarity ReferenceError
-          const maxTypeErrorSimilarity = Math.max(
-            ...typeErrorProblems.map((p: any) => p.similarity)
-          );
-          const maxRefErrorSimilarity = Math.max(...refErrorProblems.map((p: any) => p.similarity));
+          const maxTypeErrorSimilarity = Math.max(...typeErrorProblems.map((p) => p.similarity));
+          const maxRefErrorSimilarity = Math.max(...refErrorProblems.map((p) => p.similarity));
           expect(maxTypeErrorSimilarity).toBeGreaterThan(maxRefErrorSimilarity);
         }
       }
@@ -341,14 +385,12 @@ describe("GraphService", () => {
       });
       const searchTime = Date.now() - startTime;
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
       expect(response.similarProblems).toBeDefined();
 
       // Should find similar TypeErrors
-      const allTypeErrors = response.similarProblems.every((p: any) =>
-        p.content.includes("TypeError")
-      );
+      const allTypeErrors = response.similarProblems.every((p) => p.content.includes("TypeError"));
       expect(allTypeErrors).toBe(true);
 
       // Performance should be reasonable even with many nodes
@@ -376,7 +418,7 @@ describe("GraphService", () => {
         content: "Application hangs after 5 minutes",
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
 
       // Should still find similar problems even without error types
@@ -464,7 +506,7 @@ describe("GraphService", () => {
         type: "supports",
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(false);
       expect(response.message).toContain("Node(s) not found");
     });
@@ -511,13 +553,13 @@ describe("GraphService", () => {
         },
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedQueryResponse;
       expect(response.success).toBe(true);
-      expect(response.results.problems).toBeDefined();
+      expect(response.results?.problems).toBeDefined();
 
       // Check if we found problems containing 'typescript' (case-insensitive)
-      if (response.results.problems.length > 0) {
-        const hasTypescriptProblems = response.results.problems.some((p: any) =>
+      if (response.results?.problems && response.results.problems.length > 0) {
+        const hasTypescriptProblems = response.results.problems.some((p) =>
           p.content.toLowerCase().includes("typescript")
         );
         expect(hasTypescriptProblems).toBe(true);
@@ -542,7 +584,7 @@ describe("GraphService", () => {
         content: "Test hypothesis",
         parentId: p.nodeId,
       });
-      const h = JSON.parse(hypothesis.content[0].text);
+      const _h = JSON.parse(hypothesis.content[0].text);
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -568,7 +610,7 @@ describe("GraphService", () => {
         },
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
       expect(response.results).toBeDefined();
       expect(response.results.nodes).toBeDefined();
@@ -602,7 +644,7 @@ describe("GraphService", () => {
         },
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
       expect(response.results.nodes.length).toBe(10);
       expect(response.results.totalNodes).toBeGreaterThanOrEqual(15);
@@ -619,7 +661,7 @@ describe("GraphService", () => {
       });
       const p = JSON.parse(problem.content[0].text);
 
-      const hypothesis = await graphService.create({
+      const _hypothesis = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "hypothesis",
         content: "Child hypothesis",
@@ -632,22 +674,27 @@ describe("GraphService", () => {
         parameters: {},
       });
 
-      const response = JSON.parse(result.content[0].text);
-      const hypothesisNode = response.results.nodes.find((n: any) => n.type === "hypothesis");
+      const response = JSON.parse(result.content[0].text) as ParsedQueryResponse;
+      const hypothesisNode = response.results?.nodes?.find((n) => n.type === "hypothesis");
       expect(hypothesisNode).toBeDefined();
-      expect(hypothesisNode.parent).toBeDefined();
-      expect(hypothesisNode.parent.nodeId).toBe(p.nodeId);
-      expect(hypothesisNode.parent.content).toBe("Parent problem");
+      if (hypothesisNode && "parent" in hypothesisNode) {
+        const nodeWithParent = hypothesisNode as typeof hypothesisNode & {
+          parent?: { nodeId: string; content: string };
+        };
+        expect(nodeWithParent.parent).toBeDefined();
+        expect(nodeWithParent.parent?.nodeId).toBe(p.nodeId);
+        expect(nodeWithParent.parent?.content).toBe("Parent problem");
+      }
     });
 
     it("should handle unknown query type", async () => {
       const result = await graphService.query({
         action: ActionType.QUERY,
-        type: "unknown-query-type" as any,
+        type: "unknown-query-type" as never,
         parameters: {},
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(false);
       expect(response.message).toContain("Unknown query type");
     });
@@ -709,7 +756,7 @@ describe("GraphService", () => {
       });
 
       // Create a similar problem and query
-      const newProblem = await graphService.create({
+      const _newProblem = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "problem",
         content: "Slow database performance",
@@ -724,16 +771,16 @@ describe("GraphService", () => {
         },
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedQueryResponse;
       expect(response.success).toBe(true);
-      expect(response.results.problems).toBeDefined();
+      expect(response.results?.problems).toBeDefined();
 
-      if (response.results.problems.length > 0) {
+      if (response.results?.problems && response.results.problems.length > 0) {
         const similarProblem = response.results.problems[0];
         expect(similarProblem.solutions).toBeDefined();
         if (similarProblem.solutions.length > 0) {
           expect(similarProblem.solutions[0].debugPath).toBeDefined();
-          expect(similarProblem.solutions[0].debugPath.length).toBeGreaterThan(0);
+          expect(similarProblem.solutions[0].debugPath?.length).toBeGreaterThan(0);
         }
       }
     });
@@ -878,7 +925,7 @@ describe("GraphService", () => {
       });
       const hypothesisId = JSON.parse(hypothesis.content[0].text).nodeId;
 
-      const experiment = await service.create({
+      const _experiment = await service.create({
         action: ActionType.CREATE,
         nodeType: "experiment",
         content: "Test experiment",
@@ -1021,21 +1068,27 @@ describe("GraphService", () => {
         parameters: { limit: 10 },
       });
 
-      const response = JSON.parse(result.content[0].text);
+      const response = JSON.parse(result.content[0].text) as ParsedQueryResponse;
       expect(response.success).toBe(true);
 
       // Find the hypothesis node in the results
-      const hypothesisNode = response.results.nodes.find((n: any) => n.nodeId === hypothesisId);
+      const hypothesisNode = response.results?.nodes?.find((n) => n.nodeId === hypothesisId);
       expect(hypothesisNode).toBeDefined();
 
-      // Verify parent information is correctly retrieved
-      expect(hypothesisNode.parent).toBeDefined();
-      expect(hypothesisNode.parent.nodeId).toBe(problemId);
+      if (hypothesisNode && "parent" in hypothesisNode) {
+        const nodeWithDetails = hypothesisNode as typeof hypothesisNode & {
+          parent?: { nodeId: string };
+          edges?: Array<{ direction: string; targetNodeId: string }>;
+        };
+        // Verify parent information is correctly retrieved
+        expect(nodeWithDetails.parent).toBeDefined();
+        expect(nodeWithDetails.parent?.nodeId).toBe(problemId);
 
-      // Verify edges are correctly retrieved
-      expect(hypothesisNode.edges.length).toBe(1);
-      expect(hypothesisNode.edges[0].direction).toBe("to");
-      expect(hypothesisNode.edges[0].targetNodeId).toBe(problemId);
+        // Verify edges are correctly retrieved
+        expect(nodeWithDetails.edges?.length).toBe(1);
+        expect(nodeWithDetails.edges?.[0].direction).toBe("to");
+        expect(nodeWithDetails.edges?.[0].targetNodeId).toBe(problemId);
+      }
     });
 
     it("should use parent index for efficient debug path building", async () => {
@@ -1106,18 +1159,16 @@ describe("GraphService", () => {
         },
       });
 
-      const response = JSON.parse(result.content[0].text);
-      const problemWithSolution = response.results.problems.find(
-        (p: any) => p.nodeId === problemId
-      );
+      const response = JSON.parse(result.content[0].text) as ParsedQueryResponse;
+      const problemWithSolution = response.results?.problems?.find((p) => p.nodeId === problemId);
 
       if (problemWithSolution && problemWithSolution.solutions.length > 0) {
         const debugPath = problemWithSolution.solutions[0].debugPath;
         expect(debugPath).toBeDefined();
-        expect(debugPath.length).toBeGreaterThanOrEqual(2); // At least problem and solution
+        expect(debugPath?.length).toBeGreaterThanOrEqual(2); // At least problem and solution
 
         // Verify the path includes the problem and solution
-        const pathNodeIds = debugPath.map((n: any) => n.nodeId);
+        const pathNodeIds = debugPath?.map((n) => n.nodeId) || [];
         expect(pathNodeIds).toContain(problemId);
         expect(pathNodeIds).toContain(solutionId);
 

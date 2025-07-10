@@ -1,5 +1,5 @@
 export function createJsonResponse(
-  data: any,
+  data: unknown,
   error?: boolean
 ): {
   content: Array<{ type: string; text: string }>;

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { Logger, LogLevel, logger } from "../../utils/logger.js";
+import { Logger, logger } from "../../utils/logger.js";
 import chalk from "chalk";
 
 describe("Logger", () => {
-  let consoleErrorSpy: any;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn<Console, "error">>;
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {

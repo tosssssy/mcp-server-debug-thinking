@@ -17,7 +17,7 @@ describe("GraphService - Helper Methods", () => {
       const fs = await import("fs/promises");
       try {
         await fs.rm(process.env.DEBUG_DATA_DIR, { recursive: true, force: true });
-      } catch (error) {
+      } catch (_error) {
         // Directory might not exist
       }
       delete process.env.DEBUG_DATA_DIR;
@@ -71,8 +71,8 @@ describe("GraphService - Helper Methods", () => {
     });
 
     it("should handle very long strings efficiently", () => {
-      const longStr1 = "a".repeat(1000) + "unique" + "b".repeat(1000);
-      const longStr2 = "c".repeat(1000) + "unique" + "d".repeat(1000);
+      const longStr1 = `${"a".repeat(1000)}unique${"b".repeat(1000)}`;
+      const longStr2 = `${"c".repeat(1000)}unique${"d".repeat(1000)}`;
 
       const startTime = Date.now();
       // @ts-ignore - accessing private method for testing

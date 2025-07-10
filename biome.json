@@ -31,8 +31,9 @@
         "useSimplifiedLogicExpression": "off"
       },
       "correctness": {
-        "noUnusedVariables": "error",
-        "noUnusedImports": "error"
+        "noUnusedVariables": "warn",
+        "noUnusedImports": "error",
+        "noUndeclaredVariables": "error"
       },
       "style": {
         "useConst": "error",
@@ -42,13 +43,16 @@
         "noUselessElse": "off"
       },
       "suspicious": {
-        "noExplicitAny": "warn",
+        "noExplicitAny": "error",
         "noConsole": "off",
         "noDebugger": "error",
         "noVar": "error"
       },
       "performance": {
         "noDelete": "off"
+      },
+      "nursery": {
+        "useSortedClasses": "off"
       }
     }
   },

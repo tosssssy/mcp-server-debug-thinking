@@ -9,6 +9,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { GraphService } from "./services/GraphService.js";
 import { ActionType, type GraphAction } from "./types/graphActions.js";
+import type { NodeType } from "./types/graph.js";
+import type { EdgeType, QueryType } from "./types/graphActions.js";
 import { createJsonResponse } from "./utils/format.js";
 import { logger } from "./utils/logger.js";
 import { TOOL_NAME, SERVER_NAME, SERVER_VERSION } from "./constants.js";
@@ -49,14 +51,7 @@ Data persists in ~/.debug-thinking-mcp/`,
       // CREATE action
       nodeType: {
         type: "string",
-        enum: [
-          "problem",
-          "hypothesis",
-          "experiment",
-          "observation",
-          "learning",
-          "solution",
-        ],
+        enum: ["problem", "hypothesis", "experiment", "observation", "learning", "solution"],
         description: "Type of node to create (for create action)",
       },
       content: {
@@ -65,8 +60,7 @@ Data persists in ~/.debug-thinking-mcp/`,
       },
       parentId: {
         type: "string",
-        description:
-          "Parent node ID for automatic relationship creation (for create action)",
+        description: "Parent node ID for automatic relationship creation (for create action)",
       },
       metadata: {
         type: "object",
@@ -167,10 +161,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case ActionType.CREATE:
         graphAction = {
           action: ActionType.CREATE,
-          nodeType: args.nodeType as any,
+          nodeType: args.nodeType as NodeType,
           content: args.content as string,
           parentId: args.parentId as string,
-          metadata: args.metadata as any,
+          metadata: args.metadata as Record<string, unknown> | undefined,
         };
         return await graphService.create(graphAction);
 
@@ -179,17 +173,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           action: ActionType.CONNECT,
           from: args.from as string,
           to: args.to as string,
-          type: args.type as any,
+          type: args.type as EdgeType,
           strength: args.strength as number,
-          metadata: args.metadata as any,
+          metadata: args.metadata as Record<string, unknown> | undefined,
         };
         return await graphService.connect(graphAction);
 
       case ActionType.QUERY:
         graphAction = {
           action: ActionType.QUERY,
-          type: args.queryType as any,
-          parameters: args.parameters as any,
+          type: args.queryType as QueryType,
+          parameters: args.parameters as Record<string, unknown> | undefined,
         };
         return await graphService.query(graphAction);
 

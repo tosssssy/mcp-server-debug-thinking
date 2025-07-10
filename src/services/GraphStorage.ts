@@ -1,5 +1,4 @@
 import path from "path";
-import os from "os";
 import fs from "fs/promises";
 import type { Node, Edge, DebugGraph } from "../types/graph.js";
 import {
@@ -127,7 +126,11 @@ export class GraphStorage {
 
       // メタデータファイルから基本情報を読み込み
       // ファイルがない/読み込み失敗時はデフォルト値を使用
-      let metadata: any = {
+      let metadata: {
+        createdAt: Date;
+        lastModified: Date;
+        sessionCount: number;
+      } = {
         createdAt: new Date(),
         lastModified: new Date(),
         sessionCount: 0,
@@ -160,9 +163,9 @@ export class GraphStorage {
 
       // JSONLファイルからすべてのノードを読み込み
       if (hasNodes) {
-        const nodes = await readJsonLines<any>(this.nodesFile);
+        const nodes = await readJsonLines<Node>(this.nodesFile);
         // 同一IDのノードが複数ある場合は最後のものを使用(アップンド形式のため)
-        const nodeMap = new Map<string, any>();
+        const nodeMap = new Map<string, Node>();
         for (const node of nodes) {
           nodeMap.set(node.id, node);
         }
@@ -181,9 +184,9 @@ export class GraphStorage {
 
       // JSONLファイルからすべてのエッジを読み込み
       if (hasEdges) {
-        const edges = await readJsonLines<any>(this.edgesFile);
+        const edges = await readJsonLines<Edge>(this.edgesFile);
         // 同一IDのエッジが複数ある場合は最後のものを使用
-        const edgeMap = new Map<string, any>();
+        const edgeMap = new Map<string, Edge>();
         for (const edge of edges) {
           edgeMap.set(edge.id, edge);
         }
