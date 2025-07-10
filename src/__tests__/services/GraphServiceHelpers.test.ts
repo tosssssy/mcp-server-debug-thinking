@@ -73,12 +73,12 @@ describe("GraphService - Helper Methods", () => {
     it("should handle very long strings efficiently", () => {
       const longStr1 = "a".repeat(1000) + "unique" + "b".repeat(1000);
       const longStr2 = "c".repeat(1000) + "unique" + "d".repeat(1000);
-      
+
       const startTime = Date.now();
       // @ts-ignore - accessing private method for testing
       const result = graphService.findLongestCommonSubstring(longStr1, longStr2);
       const duration = Date.now() - startTime;
-      
+
       expect(result).toBe("unique");
       expect(duration).toBeLessThan(100); // Should be fast
     });
@@ -225,7 +225,9 @@ describe("GraphService - Helper Methods", () => {
   describe("extractErrorType", () => {
     it("should extract TypeError", () => {
       // @ts-ignore - accessing private method for testing
-      const errorType = graphService.extractErrorType("TypeError: Cannot read property 'x' of undefined");
+      const errorType = graphService.extractErrorType(
+        "TypeError: Cannot read property 'x' of undefined"
+      );
       expect(errorType).toBe("type error");
     });
 
@@ -279,7 +281,9 @@ describe("GraphService - Helper Methods", () => {
 
     it("should handle error types in the middle of text", () => {
       // @ts-ignore - accessing private method for testing
-      const errorType = graphService.extractErrorType("Application crashed with TypeError in module X");
+      const errorType = graphService.extractErrorType(
+        "Application crashed with TypeError in module X"
+      );
       expect(errorType).toBe("type error");
     });
 
@@ -334,13 +338,13 @@ describe("GraphService - Helper Methods", () => {
 
       // @ts-ignore - accessing private method for testing
       const path = graphService.buildDebugPath(problemId, solutionId);
-      
+
       expect(path).toHaveLength(5);
       expect(path[0].id).toBe(problemId);
       expect(path[0].type).toBe("problem");
       expect(path[4].id).toBe(solutionId);
       expect(path[4].type).toBe("solution");
-      
+
       // Verify the order
       expect(path[1].type).toBe("hypothesis");
       expect(path[2].type).toBe("experiment");
@@ -364,7 +368,7 @@ describe("GraphService - Helper Methods", () => {
 
       // @ts-ignore - accessing private method for testing
       const path = graphService.buildDebugPath(problemId, solutionId);
-      
+
       // Should at least include the solution node
       expect(path.length).toBeGreaterThanOrEqual(1);
       expect(path[path.length - 1].id).toBe(solutionId);
@@ -403,7 +407,7 @@ describe("GraphService - Helper Methods", () => {
 
       // @ts-ignore - accessing private method for testing
       const path = graphService.buildDebugPath(node1Id, node2Id);
-      
+
       // Should handle circular references without infinite loop
       expect(path).toBeDefined();
       expect(path.length).toBeGreaterThan(0);
@@ -413,7 +417,7 @@ describe("GraphService - Helper Methods", () => {
       // Create a deep hierarchy
       let currentId: string | undefined;
       const nodeIds: string[] = [];
-      
+
       for (let i = 0; i < 10; i++) {
         const nodeType = i === 0 ? "problem" : i === 9 ? "solution" : "hypothesis";
         const result = await graphService.create({
@@ -430,7 +434,7 @@ describe("GraphService - Helper Methods", () => {
       // @ts-ignore - accessing private method for testing
       const path = graphService.buildDebugPath(nodeIds[0], nodeIds[9]);
       const duration = Date.now() - startTime;
-      
+
       expect(path).toHaveLength(10);
       expect(duration).toBeLessThan(10); // Should be very fast with parent index
     });
@@ -464,11 +468,11 @@ describe("GraphService - Helper Methods", () => {
       // Check the index
       // @ts-ignore - accessing private property for testing
       const errorTypeIndex = graphService.errorTypeIndex;
-      
+
       expect(errorTypeIndex.has("type error")).toBe(true);
       expect(errorTypeIndex.has("reference error")).toBe(true);
       expect(errorTypeIndex.has("other")).toBe(true);
-      
+
       expect(errorTypeIndex.get("type error")?.size).toBe(1);
       expect(errorTypeIndex.get("reference error")?.size).toBe(1);
       expect(errorTypeIndex.get("other")?.size).toBe(1);
@@ -485,7 +489,7 @@ describe("GraphService - Helper Methods", () => {
       // @ts-ignore - accessing private property for testing
       const errorTypeIndex = graphService.errorTypeIndex;
       expect(errorTypeIndex.has("syntax error")).toBe(true);
-      
+
       // Add another syntax error
       await graphService.create({
         action: ActionType.CREATE,
@@ -507,7 +511,7 @@ describe("GraphService - Helper Methods", () => {
 
       // @ts-ignore - accessing private property for testing
       const errorTypeIndex = graphService.errorTypeIndex;
-      
+
       // Should be categorized under the first error type found
       expect(errorTypeIndex.get("type error")?.has(nodeId)).toBe(true);
       expect(errorTypeIndex.get("reference error")?.has(nodeId)).toBe(false);
@@ -519,7 +523,7 @@ describe("GraphService - Helper Methods", () => {
       // Create a large number of nodes
       const nodeCount = 100;
       const nodeIds: string[] = [];
-      
+
       for (let i = 0; i < nodeCount; i++) {
         const result = await graphService.create({
           action: ActionType.CREATE,

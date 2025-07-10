@@ -80,7 +80,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      
+
       // Check that default metadata is applied
       const graph = graphService.getGraph();
       const node = graph.nodes.get(response.nodeId);
@@ -107,7 +107,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
   describe("Extreme length handling", () => {
     it("should handle very long content", async () => {
       const longContent = "A".repeat(10000) + " error message " + "B".repeat(10000);
-      
+
       const result = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "problem",
@@ -116,7 +116,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      
+
       // Verify the content was stored correctly
       const graph = graphService.getGraph();
       const node = graph.nodes.get(response.nodeId);
@@ -165,7 +165,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
   describe("Special characters and encoding", () => {
     it("should handle unicode characters", async () => {
       const unicodeContent = "Error: 🚨 Failed to process émojis and ñoñ-ASCII çharacters λ→∞";
-      
+
       const result = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "problem",
@@ -174,7 +174,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      
+
       // Verify content is preserved
       const graph = graphService.getGraph();
       const node = graph.nodes.get(response.nodeId);
@@ -205,7 +205,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
 
     it("should handle HTML/XML content", async () => {
       const htmlContent = 'Error: Cannot parse <div class="test">content</div>';
-      
+
       const result = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "problem",
@@ -218,7 +218,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
 
     it("should handle JSON strings", async () => {
       const jsonContent = 'Error parsing JSON: {"key": "value", "nested": {"array": [1,2,3]}}';
-      
+
       const result = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "problem",
@@ -230,8 +230,9 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
     });
 
     it("should handle escaped characters", async () => {
-      const escapedContent = 'Error: Path not found "C:\\Users\\Test\\file.txt" or \'data\\n\\tvalue\'';
-      
+      const escapedContent =
+        "Error: Path not found \"C:\\Users\\Test\\file.txt\" or 'data\\n\\tvalue'";
+
       const result = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "problem",
@@ -319,11 +320,11 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
 
       const overResponse = JSON.parse(overResult.content[0].text);
       expect(overResponse.success).toBe(true);
-      
+
       // Check that strength was clamped to 1
       const graph = graphService.getGraph();
       const edge = Array.from(graph.edges.values()).find(
-        e => e.from === nodeId1 && e.to === nodeId2
+        (e) => e.from === nodeId1 && e.to === nodeId2
       );
       expect(edge?.strength).toBe(1);
 
@@ -345,10 +346,10 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
 
       const negResponse = JSON.parse(negResult.content[0].text);
       expect(negResponse.success).toBe(true);
-      
+
       // Check that strength was clamped to 0
       const negEdge = Array.from(graph.edges.values()).find(
-        e => e.from === nodeId1 && e.to === nodeId3
+        (e) => e.from === nodeId1 && e.to === nodeId3
       );
       expect(negEdge?.strength).toBe(0);
     });
@@ -398,7 +399,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
       }
 
       const results = await Promise.all(promises);
-      
+
       // All should succeed
       results.forEach((result) => {
         const response = JSON.parse(result.content[0].text);
@@ -432,7 +433,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
       }
 
       // Connect all hypotheses to central problem concurrently
-      const connectPromises = hypothesisIds.map(hypId =>
+      const connectPromises = hypothesisIds.map((hypId) =>
         graphService.connect({
           action: ActionType.CONNECT,
           from: centralId,
@@ -442,18 +443,16 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
       );
 
       const connectResults = await Promise.all(connectPromises);
-      
+
       // All connections should succeed
-      connectResults.forEach(result => {
+      connectResults.forEach((result) => {
         const response = JSON.parse(result.content[0].text);
         expect(response.success).toBe(true);
       });
 
       // Verify all edges were created
       const graph = graphService.getGraph();
-      const edges = Array.from(graph.edges.values()).filter(
-        e => e.from === centralId
-      );
+      const edges = Array.from(graph.edges.values()).filter((e) => e.from === centralId);
       expect(edges.length).toBe(10);
     });
   });
@@ -673,10 +672,8 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
 
       // Create a deep chain
       for (let i = 0; i < depth; i++) {
-        const nodeType = i === 0 ? "problem" : 
-                        i === depth - 1 ? "solution" : 
-                        "hypothesis";
-        
+        const nodeType = i === 0 ? "problem" : i === depth - 1 ? "solution" : "hypothesis";
+
         const result = await graphService.create({
           action: ActionType.CREATE,
           nodeType,
@@ -703,7 +700,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
     it("should maintain consistency when nodes are referenced before creation", async () => {
       // This shouldn't happen in normal usage, but test defensive programming
       const nonExistentId = "non-existent-node-id";
-      
+
       const result = await graphService.connect({
         action: ActionType.CONNECT,
         from: nonExistentId,
@@ -754,7 +751,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
       // Verify both edges exist
       const graph = graphService.getGraph();
       const edges = Array.from(graph.edges.values()).filter(
-        e => e.from === nodeId1 && e.to === nodeId2 && e.type === "tests"
+        (e) => e.from === nodeId1 && e.to === nodeId2 && e.type === "tests"
       );
       expect(edges.length).toBe(2);
     });
@@ -781,7 +778,7 @@ describe("GraphService - Edge Cases and Boundary Conditions", () => {
       // Verify edge was created
       const graph = graphService.getGraph();
       const selfEdge = Array.from(graph.edges.values()).find(
-        e => e.from === nodeId && e.to === nodeId
+        (e) => e.from === nodeId && e.to === nodeId
       );
       expect(selfEdge).toBeDefined();
     });

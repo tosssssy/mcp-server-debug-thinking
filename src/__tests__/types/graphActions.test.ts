@@ -1,47 +1,47 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 import {
   ActionType,
-  CreateAction,
-  ConnectAction,
-  QueryAction,
+  type CreateAction,
+  type ConnectAction,
+  type QueryAction,
   getAutoEdgeType,
-} from '../../types/graphActions.js';
+} from "../../types/graphActions.js";
 
-describe('Graph Actions', () => {
-  describe('ActionType enum', () => {
-    it('should have correct action types', () => {
-      expect(ActionType.CREATE).toBe('create');
-      expect(ActionType.CONNECT).toBe('connect');
-      expect(ActionType.QUERY).toBe('query');
+describe("Graph Actions", () => {
+  describe("ActionType enum", () => {
+    it("should have correct action types", () => {
+      expect(ActionType.CREATE).toBe("create");
+      expect(ActionType.CONNECT).toBe("connect");
+      expect(ActionType.QUERY).toBe("query");
     });
   });
 
-  describe('CreateAction', () => {
-    it('should have correct structure', () => {
+  describe("CreateAction", () => {
+    it("should have correct structure", () => {
       const createAction: CreateAction = {
         action: ActionType.CREATE,
-        nodeType: 'problem',
-        content: 'Test problem',
-        parentId: 'parent-123',
+        nodeType: "problem",
+        content: "Test problem",
+        parentId: "parent-123",
         metadata: {
           confidence: 80,
-          tags: ['bug', 'critical'],
+          tags: ["bug", "critical"],
         },
       };
 
       expect(createAction.action).toBe(ActionType.CREATE);
-      expect(createAction.nodeType).toBe('problem');
-      expect(createAction.content).toBe('Test problem');
-      expect(createAction.parentId).toBe('parent-123');
+      expect(createAction.nodeType).toBe("problem");
+      expect(createAction.content).toBe("Test problem");
+      expect(createAction.parentId).toBe("parent-123");
       expect(createAction.metadata?.confidence).toBe(80);
-      expect(createAction.metadata?.tags).toEqual(['bug', 'critical']);
+      expect(createAction.metadata?.tags).toEqual(["bug", "critical"]);
     });
 
-    it('should work without optional fields', () => {
+    it("should work without optional fields", () => {
       const minimalAction: CreateAction = {
         action: ActionType.CREATE,
-        nodeType: 'hypothesis',
-        content: 'Simple hypothesis',
+        nodeType: "hypothesis",
+        content: "Simple hypothesis",
       };
 
       expect(minimalAction.parentId).toBeUndefined();
@@ -49,34 +49,34 @@ describe('Graph Actions', () => {
     });
   });
 
-  describe('ConnectAction', () => {
-    it('should have correct structure', () => {
+  describe("ConnectAction", () => {
+    it("should have correct structure", () => {
       const connectAction: ConnectAction = {
         action: ActionType.CONNECT,
-        from: 'node-1',
-        to: 'node-2',
-        type: 'supports',
+        from: "node-1",
+        to: "node-2",
+        type: "supports",
         strength: 0.9,
         metadata: {
-          reasoning: 'Strong evidence',
-          evidence: 'Test results',
+          reasoning: "Strong evidence",
+          evidence: "Test results",
         },
       };
 
       expect(connectAction.action).toBe(ActionType.CONNECT);
-      expect(connectAction.from).toBe('node-1');
-      expect(connectAction.to).toBe('node-2');
-      expect(connectAction.type).toBe('supports');
+      expect(connectAction.from).toBe("node-1");
+      expect(connectAction.to).toBe("node-2");
+      expect(connectAction.type).toBe("supports");
       expect(connectAction.strength).toBe(0.9);
-      expect(connectAction.metadata?.reasoning).toBe('Strong evidence');
+      expect(connectAction.metadata?.reasoning).toBe("Strong evidence");
     });
 
-    it('should work without optional fields', () => {
+    it("should work without optional fields", () => {
       const minimalAction: ConnectAction = {
         action: ActionType.CONNECT,
-        from: 'a',
-        to: 'b',
-        type: 'learns',
+        from: "a",
+        to: "b",
+        type: "learns",
       };
 
       expect(minimalAction.strength).toBeUndefined();
@@ -84,14 +84,11 @@ describe('Graph Actions', () => {
     });
   });
 
-  describe('QueryAction', () => {
-    it('should support all query types', () => {
-      const queryTypes = [
-        'similar-problems',
-        'recent-activity',
-      ];
+  describe("QueryAction", () => {
+    it("should support all query types", () => {
+      const queryTypes = ["similar-problems", "recent-activity"];
 
-      queryTypes.forEach(queryType => {
+      queryTypes.forEach((queryType) => {
         const action: QueryAction = {
           action: ActionType.QUERY,
           type: queryType as any,
@@ -100,104 +97,104 @@ describe('Graph Actions', () => {
       });
     });
 
-    it('should support query parameters', () => {
+    it("should support query parameters", () => {
       const queryAction: QueryAction = {
         action: ActionType.QUERY,
-        type: 'similar-problems',
+        type: "similar-problems",
         parameters: {
-          pattern: 'memory leak',
+          pattern: "memory leak",
           limit: 10,
           minSimilarity: 0.5,
         },
       };
 
-      expect(queryAction.parameters?.pattern).toBe('memory leak');
+      expect(queryAction.parameters?.pattern).toBe("memory leak");
       expect(queryAction.parameters?.limit).toBe(10);
       expect(queryAction.parameters?.minSimilarity).toBe(0.5);
     });
 
-    it('should work without parameters', () => {
+    it("should work without parameters", () => {
       const minimalQuery: QueryAction = {
         action: ActionType.QUERY,
-        type: 'recent-activity',
+        type: "recent-activity",
       };
 
       expect(minimalQuery.parameters).toBeUndefined();
     });
   });
 
-  describe('getAutoEdgeType', () => {
-    it('should return correct edge type for valid parent-child combinations', () => {
-      expect(getAutoEdgeType('problem', 'problem')).toBe('decomposes');
-      expect(getAutoEdgeType('problem', 'hypothesis')).toBe('hypothesizes');
-      expect(getAutoEdgeType('hypothesis', 'experiment')).toBe('tests');
-      expect(getAutoEdgeType('experiment', 'observation')).toBe('produces');
-      expect(getAutoEdgeType('observation', 'learning')).toBe('learns');
-      expect(getAutoEdgeType('solution', 'problem')).toBe('solves');
+  describe("getAutoEdgeType", () => {
+    it("should return correct edge type for valid parent-child combinations", () => {
+      expect(getAutoEdgeType("problem", "problem")).toBe("decomposes");
+      expect(getAutoEdgeType("problem", "hypothesis")).toBe("hypothesizes");
+      expect(getAutoEdgeType("hypothesis", "experiment")).toBe("tests");
+      expect(getAutoEdgeType("experiment", "observation")).toBe("produces");
+      expect(getAutoEdgeType("observation", "learning")).toBe("learns");
+      expect(getAutoEdgeType("solution", "problem")).toBe("solves");
     });
 
-    it('should return null for invalid combinations', () => {
-      expect(getAutoEdgeType('problem', 'experiment')).toBeNull();
-      expect(getAutoEdgeType('hypothesis', 'learning')).toBeNull();
-      expect(getAutoEdgeType('solution', 'hypothesis')).toBeNull();
-      expect(getAutoEdgeType('learning', 'problem')).toBeNull();
+    it("should return null for invalid combinations", () => {
+      expect(getAutoEdgeType("problem", "experiment")).toBeNull();
+      expect(getAutoEdgeType("hypothesis", "learning")).toBeNull();
+      expect(getAutoEdgeType("solution", "hypothesis")).toBeNull();
+      expect(getAutoEdgeType("learning", "problem")).toBeNull();
     });
   });
 
-  describe('Response types', () => {
-    it('should support CreateResponse structure', () => {
+  describe("Response types", () => {
+    it("should support CreateResponse structure", () => {
       const response = {
         success: true,
-        nodeId: 'new-node-123',
-        edgeId: 'new-edge-456',
-        message: 'Node created successfully',
+        nodeId: "new-node-123",
+        edgeId: "new-edge-456",
+        message: "Node created successfully",
         suggestions: {
-          relatedProblems: ['prob-1', 'prob-2'],
-          possibleHypotheses: ['hyp-1'],
-          recommendedExperiments: ['exp-1'],
+          relatedProblems: ["prob-1", "prob-2"],
+          possibleHypotheses: ["hyp-1"],
+          recommendedExperiments: ["exp-1"],
         },
       };
 
       expect(response.success).toBe(true);
-      expect(response.nodeId).toBe('new-node-123');
+      expect(response.nodeId).toBe("new-node-123");
       expect(response.suggestions?.relatedProblems).toHaveLength(2);
     });
 
-    it('should support ConnectResponse with conflicts', () => {
+    it("should support ConnectResponse with conflicts", () => {
       const response = {
         success: true,
-        edgeId: 'edge-789',
-        message: 'Connected successfully',
+        edgeId: "edge-789",
+        message: "Connected successfully",
         conflicts: {
-          conflictingEdges: ['edge-1', 'edge-2'],
-          explanation: 'Contradicts existing support relationship',
+          conflictingEdges: ["edge-1", "edge-2"],
+          explanation: "Contradicts existing support relationship",
         },
       };
 
       expect(response.conflicts?.conflictingEdges).toHaveLength(2);
-      expect(response.conflicts?.explanation).toContain('Contradicts');
+      expect(response.conflicts?.explanation).toContain("Contradicts");
     });
 
-    it('should support QueryResponse', () => {
+    it("should support QueryResponse", () => {
       const response = {
         success: true,
         results: {
           problems: [
             {
-              nodeId: 'p1',
-              content: 'Memory leak',
+              nodeId: "p1",
+              content: "Memory leak",
               similarity: 0.85,
               solutions: [
                 {
-                  nodeId: 's1',
-                  content: 'Fix event listeners',
+                  nodeId: "s1",
+                  content: "Fix event listeners",
                   verified: true,
                 },
               ],
             },
           ],
         },
-        message: 'Found 1 similar problem',
+        message: "Found 1 similar problem",
         queryTime: 45,
       };
 

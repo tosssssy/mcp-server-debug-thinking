@@ -57,7 +57,7 @@ describe("GraphService - Performance Tests", () => {
     it("should handle long text similarity efficiently", { timeout: 30000 }, async () => {
       // Create problems with long content
       const longText = "Lorem ipsum dolor sit amet ".repeat(100);
-      
+
       for (let i = 0; i < 20; i++) {
         await graphService.create({
           action: ActionType.CREATE,
@@ -82,7 +82,7 @@ describe("GraphService - Performance Tests", () => {
     it("should use error type indexing for performance", async () => {
       // Create many problems with different error types
       const errorTypes = ["TypeError", "ReferenceError", "SyntaxError", "RangeError", "Error"];
-      
+
       for (let i = 0; i < 500; i++) {
         const errorType = errorTypes[i % errorTypes.length];
         await graphService.create({
@@ -124,7 +124,7 @@ describe("GraphService - Performance Tests", () => {
       // Both should be fast, but error type search should be faster
       expect(durationWithType).toBeLessThan(100);
       expect(durationWithoutType).toBeLessThan(150);
-      
+
       // Verify results are meaningful
       const responseWithType = JSON.parse(resultWithType.content[0].text);
       const responseWithoutType = JSON.parse(resultWithoutType.content[0].text);
@@ -137,7 +137,7 @@ describe("GraphService - Performance Tests", () => {
     it("should maintain performance with increasing graph size", { timeout: 30000 }, async () => {
       const measurements = [];
       const checkpoints = [10, 50, 100, 200, 500];
-      
+
       let totalNodes = 0;
       for (const checkpoint of checkpoints) {
         // Add nodes up to checkpoint
@@ -169,7 +169,7 @@ describe("GraphService - Performance Tests", () => {
       }
 
       console.log("Scalability measurements:");
-      measurements.forEach(m => {
+      measurements.forEach((m) => {
         console.log(`  ${m.nodeCount} nodes: ${m.queryTime.toFixed(2)}ms`);
       });
 
@@ -187,7 +187,7 @@ describe("GraphService - Performance Tests", () => {
       // Create a complex interconnected graph
       const problemCount = 50;
       const problemIds: string[] = [];
-      
+
       // Create problems
       for (let i = 0; i < problemCount; i++) {
         const result = await graphService.create({
@@ -246,8 +246,9 @@ describe("GraphService - Performance Tests", () => {
   describe("Memory efficiency", () => {
     it("should handle large numbers of similar problems efficiently", async () => {
       // Create many very similar problems
-      const baseError = "TypeError: Cannot read property 'data' of undefined in UserService.getUser()";
-      
+      const baseError =
+        "TypeError: Cannot read property 'data' of undefined in UserService.getUser()";
+
       for (let i = 0; i < 200; i++) {
         // Slight variations
         const variation = baseError.replace("data", `data${i % 10}`);
@@ -271,7 +272,7 @@ describe("GraphService - Performance Tests", () => {
       expect(response.success).toBe(true);
       expect(response.similarProblems).toBeDefined();
       expect(response.similarProblems.length).toBeGreaterThan(0);
-      
+
       const duration = endTime - startTime;
       console.log(`Time to find similar among 200 near-duplicates: ${duration.toFixed(2)}ms`);
       expect(duration).toBeLessThan(150);
@@ -283,12 +284,12 @@ describe("GraphService - Performance Tests", () => {
       // Test the LCS algorithm performance
       const text1 = "a".repeat(500) + "unique_pattern" + "b".repeat(500);
       const text2 = "c".repeat(500) + "unique_pattern" + "d".repeat(500);
-      
+
       const startTime = performance.now();
       // @ts-ignore - accessing private method for testing
       const lcs = graphService.findLongestCommonSubstring(text1, text2);
       const endTime = performance.now();
-      
+
       expect(lcs).toBe("unique_pattern");
       const duration = endTime - startTime;
       console.log(`LCS for 1000+ char strings: ${duration.toFixed(2)}ms`);
@@ -299,18 +300,18 @@ describe("GraphService - Performance Tests", () => {
       // Test Levenshtein distance performance
       const text1 = "The quick brown fox jumps over the lazy dog";
       const text2 = "The quick brown cat jumps over the lazy dog";
-      
+
       const iterations = 100;
       const startTime = performance.now();
-      
+
       for (let i = 0; i < iterations; i++) {
         // @ts-ignore - accessing private method for testing
         graphService.calculateLevenshteinSimilarity(text1, text2);
       }
-      
+
       const endTime = performance.now();
       const avgTime = (endTime - startTime) / iterations;
-      
+
       console.log(`Average Levenshtein calculation: ${avgTime.toFixed(3)}ms`);
       expect(avgTime).toBeLessThan(1); // Should be sub-millisecond
     });
@@ -318,12 +319,12 @@ describe("GraphService - Performance Tests", () => {
     it("should use word-level similarity for long texts", { timeout: 30000 }, async () => {
       const longText1 = "Lorem ipsum dolor sit amet consectetur adipiscing elit ".repeat(50);
       const longText2 = "Lorem ipsum dolor sit amet consectetur adipiscing elit sed ".repeat(50);
-      
+
       const startTime = performance.now();
       // @ts-ignore - accessing private method for testing
       const similarity = graphService.calculateWordLevelSimilarity(longText1, longText2);
       const endTime = performance.now();
-      
+
       const duration = endTime - startTime;
       console.log(`Word-level similarity for long texts: ${duration.toFixed(2)}ms`);
       expect(duration).toBeLessThan(50);
@@ -335,12 +336,12 @@ describe("GraphService - Performance Tests", () => {
     it("should handle batch creation efficiently", async () => {
       const batchSize = 100;
       const batches = 5;
-      
+
       const batchTimes: number[] = [];
-      
+
       for (let batch = 0; batch < batches; batch++) {
         const startTime = performance.now();
-        
+
         const promises = [];
         for (let i = 0; i < batchSize; i++) {
           promises.push(
@@ -351,16 +352,16 @@ describe("GraphService - Performance Tests", () => {
             })
           );
         }
-        
+
         await Promise.all(promises);
         const endTime = performance.now();
         batchTimes.push(endTime - startTime);
       }
-      
+
       const avgBatchTime = batchTimes.reduce((a, b) => a + b) / batchTimes.length;
       console.log(`Average time for ${batchSize} concurrent creates: ${avgBatchTime.toFixed(2)}ms`);
       console.log(`Average time per operation: ${(avgBatchTime / batchSize).toFixed(2)}ms`);
-      
+
       // Should handle concurrent operations efficiently
       expect(avgBatchTime).toBeLessThan(1000); // Less than 1 second for 100 operations
     });
@@ -373,11 +374,11 @@ describe("GraphService - Performance Tests", () => {
         content: "Base problem for concurrent test",
       });
       const baseId = JSON.parse(baseResult.content[0].text).nodeId;
-      
+
       // Create many hypotheses concurrently
       const concurrentCount = 50;
       const promises = [];
-      
+
       for (let i = 0; i < concurrentCount; i++) {
         promises.push(
           graphService.create({
@@ -388,26 +389,28 @@ describe("GraphService - Performance Tests", () => {
           })
         );
       }
-      
+
       const startTime = performance.now();
       const results = await Promise.all(promises);
       const endTime = performance.now();
-      
+
       // All should succeed
-      results.forEach(result => {
+      results.forEach((result) => {
         const response = JSON.parse(result.content[0].text);
         expect(response.success).toBe(true);
       });
-      
+
       // Verify graph consistency
       const graph = graphService.getGraph();
       const edges = Array.from(graph.edges.values()).filter(
-        e => e.from === baseId && e.type === "hypothesizes"
+        (e) => e.from === baseId && e.type === "hypothesizes"
       );
       expect(edges.length).toBe(concurrentCount);
-      
+
       const duration = endTime - startTime;
-      console.log(`Time for ${concurrentCount} concurrent parent-child creates: ${duration.toFixed(2)}ms`);
+      console.log(
+        `Time for ${concurrentCount} concurrent parent-child creates: ${duration.toFixed(2)}ms`
+      );
       expect(duration).toBeLessThan(500);
     });
   });
@@ -416,16 +419,23 @@ describe("GraphService - Performance Tests", () => {
     it("should build indexes efficiently", { timeout: 30000 }, async () => {
       // Create a large graph
       const nodeCount = 1000;
-      
+
       for (let i = 0; i < nodeCount; i++) {
-        const nodeType = ["problem", "hypothesis", "experiment", "observation", "learning", "solution"][i % 6];
+        const nodeType = [
+          "problem",
+          "hypothesis",
+          "experiment",
+          "observation",
+          "learning",
+          "solution",
+        ][i % 6];
         await graphService.create({
           action: ActionType.CREATE,
           nodeType: nodeType as any,
           content: `Node ${i} of type ${nodeType}`,
         });
       }
-      
+
       // Force index rebuild and measure time
       const startTime = performance.now();
       // @ts-ignore - accessing private methods for testing
@@ -433,11 +443,11 @@ describe("GraphService - Performance Tests", () => {
       // @ts-ignore
       graphService.buildPerformanceIndexes();
       const endTime = performance.now();
-      
+
       const duration = endTime - startTime;
       console.log(`Index rebuild for ${nodeCount} nodes: ${duration.toFixed(2)}ms`);
       expect(duration).toBeLessThan(100); // Should be very fast
-      
+
       // Verify indexes are populated
       // @ts-ignore - accessing private property for testing
       expect(graphService.nodesByType.size).toBeGreaterThan(0);
@@ -454,7 +464,7 @@ describe("GraphService - Performance Tests", () => {
           content: `${i % 3 === 0 ? "TypeError" : "Error"}: Issue in module ${i}`,
         });
       }
-      
+
       // Query without index (simulate by searching for generic pattern)
       const startTimeGeneric = performance.now();
       await graphService.query({
@@ -467,7 +477,7 @@ describe("GraphService - Performance Tests", () => {
       });
       const endTimeGeneric = performance.now();
       const durationGeneric = endTimeGeneric - startTimeGeneric;
-      
+
       // Query with index benefit (specific error type)
       const startTimeIndexed = performance.now();
       await graphService.query({
@@ -480,10 +490,10 @@ describe("GraphService - Performance Tests", () => {
       });
       const endTimeIndexed = performance.now();
       const durationIndexed = endTimeIndexed - startTimeIndexed;
-      
+
       console.log(`Generic query: ${durationGeneric.toFixed(2)}ms`);
       console.log(`Indexed query: ${durationIndexed.toFixed(2)}ms`);
-      
+
       // Both should be fast, but indexed should generally be faster
       expect(durationIndexed).toBeLessThan(50);
       expect(durationGeneric).toBeLessThan(100);
@@ -494,18 +504,19 @@ describe("GraphService - Performance Tests", () => {
     it("should handle typical debugging session efficiently", async () => {
       // Simulate a typical debugging session
       const sessionStartTime = performance.now();
-      
+
       // 1. Create initial problem
       const problem = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "problem",
-        content: "TypeError: Cannot read property 'user' of undefined in AuthService.validateToken()",
+        content:
+          "TypeError: Cannot read property 'user' of undefined in AuthService.validateToken()",
       });
       const problemId = JSON.parse(problem.content[0].text).nodeId;
-      
+
       // Check for similar problems (should find some from setup)
       expect(JSON.parse(problem.content[0].text).similarProblems).toBeDefined();
-      
+
       // 2. Create hypotheses
       const hyp1 = await graphService.create({
         action: ActionType.CREATE,
@@ -514,7 +525,7 @@ describe("GraphService - Performance Tests", () => {
         parentId: problemId,
       });
       const hypId1 = JSON.parse(hyp1.content[0].text).nodeId;
-      
+
       const hyp2 = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "hypothesis",
@@ -522,7 +533,7 @@ describe("GraphService - Performance Tests", () => {
         parentId: problemId,
       });
       const hypId2 = JSON.parse(hyp2.content[0].text).nodeId;
-      
+
       // 3. Create experiments
       const exp1 = await graphService.create({
         action: ActionType.CREATE,
@@ -530,7 +541,7 @@ describe("GraphService - Performance Tests", () => {
         content: "Check token expiration time",
         parentId: hypId1,
       });
-      
+
       const exp2 = await graphService.create({
         action: ActionType.CREATE,
         nodeType: "experiment",
@@ -538,7 +549,7 @@ describe("GraphService - Performance Tests", () => {
         parentId: hypId2,
       });
       const expId2 = JSON.parse(exp2.content[0].text).nodeId;
-      
+
       // 4. Create observation
       const obs = await graphService.create({
         action: ActionType.CREATE,
@@ -546,7 +557,7 @@ describe("GraphService - Performance Tests", () => {
         content: "User object is null when token is valid but user deleted",
         parentId: expId2,
       });
-      
+
       // 5. Create solution
       const solution = await graphService.create({
         action: ActionType.CREATE,
@@ -554,7 +565,7 @@ describe("GraphService - Performance Tests", () => {
         content: "Add null check for user object after token validation",
       });
       const solutionId = JSON.parse(solution.content[0].text).nodeId;
-      
+
       // 6. Connect solution
       await graphService.connect({
         action: ActionType.CONNECT,
@@ -562,17 +573,17 @@ describe("GraphService - Performance Tests", () => {
         to: problemId,
         type: "solves",
       });
-      
+
       // 7. Query recent activity
       await graphService.query({
         action: ActionType.QUERY,
         type: "recent-activity",
         parameters: { limit: 10 },
       });
-      
+
       const sessionEndTime = performance.now();
       const sessionDuration = sessionEndTime - sessionStartTime;
-      
+
       console.log(`Full debugging session simulation: ${sessionDuration.toFixed(2)}ms`);
       expect(sessionDuration).toBeLessThan(500); // Should complete quickly
     });
@@ -582,7 +593,7 @@ describe("GraphService - Performance Tests", () => {
       const logDuration = 100; // milliseconds
       const startTime = performance.now();
       let count = 0;
-      
+
       while (performance.now() - startTime < logDuration) {
         await graphService.create({
           action: ActionType.CREATE,
@@ -591,14 +602,14 @@ describe("GraphService - Performance Tests", () => {
         });
         count++;
       }
-      
+
       const endTime = performance.now();
       const totalDuration = endTime - startTime;
       const opsPerSecond = (count / totalDuration) * 1000;
-      
+
       console.log(`Logged ${count} problems in ${totalDuration.toFixed(2)}ms`);
       console.log(`Rate: ${opsPerSecond.toFixed(2)} operations per second`);
-      
+
       expect(opsPerSecond).toBeGreaterThan(10); // Should handle at least 10 ops/sec
     });
   });

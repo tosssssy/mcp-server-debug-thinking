@@ -5,16 +5,10 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-  Tool,
+  type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { GraphService } from "./services/GraphService.js";
-import {
-  ActionType,
-  CreateAction,
-  ConnectAction,
-  QueryAction,
-  GraphAction,
-} from "./types/graphActions.js";
+import { ActionType, type GraphAction } from "./types/graphActions.js";
 import { createJsonResponse } from "./utils/format.js";
 import { logger } from "./utils/logger.js";
 import { TOOL_NAME, SERVER_NAME, SERVER_VERSION } from "./constants.js";
@@ -55,7 +49,14 @@ Data persists in ~/.debug-thinking-mcp/`,
       // CREATE action
       nodeType: {
         type: "string",
-        enum: ["problem", "hypothesis", "experiment", "observation", "learning", "solution"],
+        enum: [
+          "problem",
+          "hypothesis",
+          "experiment",
+          "observation",
+          "learning",
+          "solution",
+        ],
         description: "Type of node to create (for create action)",
       },
       content: {
@@ -64,7 +65,8 @@ Data persists in ~/.debug-thinking-mcp/`,
       },
       parentId: {
         type: "string",
-        description: "Parent node ID for automatic relationship creation (for create action)",
+        description:
+          "Parent node ID for automatic relationship creation (for create action)",
       },
       metadata: {
         type: "object",
@@ -106,19 +108,29 @@ Data persists in ~/.debug-thinking-mcp/`,
       // QUERY action
       queryType: {
         type: "string",
-        enum: [
-          "similar-problems",
-          "recent-activity",
-        ],
+        enum: ["similar-problems", "recent-activity"],
         description: "Type of query to perform (for query action)",
       },
       parameters: {
         type: "object",
         description: "Query parameters (for query action)",
         properties: {
-          pattern: { type: "string", description: "Search pattern for similar-problems query" },
-          limit: { type: "integer", minimum: 1, maximum: 100, description: "Maximum number of results to return" },
-          minSimilarity: { type: "number", minimum: 0, maximum: 1, description: "Minimum similarity score for similar-problems query" },
+          pattern: {
+            type: "string",
+            description: "Search pattern for similar-problems query",
+          },
+          limit: {
+            type: "integer",
+            minimum: 1,
+            maximum: 100,
+            description: "Maximum number of results to return",
+          },
+          minSimilarity: {
+            type: "number",
+            minimum: 0,
+            maximum: 1,
+            description: "Minimum similarity score for similar-problems query",
+          },
         },
       },
     },
@@ -135,7 +147,7 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
-  },
+  }
 );
 
 const graphService = new GraphService();
@@ -187,7 +199,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             error: `Unknown action: ${action}`,
             validActions: Object.values(ActionType),
           },
-          true,
+          true
         );
     }
   }
@@ -196,7 +208,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     {
       error: `Unknown tool: ${request.params.name}`,
     },
-    true,
+    true
   );
 });
 

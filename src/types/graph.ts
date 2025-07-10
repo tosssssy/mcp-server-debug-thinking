@@ -12,21 +12,27 @@
  * - learning: 観察から得た知見
  * - solution: 問題の解決策
  */
-export type NodeType = "problem" | "hypothesis" | "experiment" | "observation" | "learning" | "solution";
+export type NodeType =
+  | "problem"
+  | "hypothesis"
+  | "experiment"
+  | "observation"
+  | "learning"
+  | "solution";
 
 /**
  * エッジタイプ: ノード間の意味的な関係を定義
  * 各タイプはデバッグプロセスの自然な流れを表現
  */
-export type EdgeType = 
-  | "decomposes"    // 問題をより小さなサブ問題に分解
-  | "hypothesizes"  // 問題に対して仮説を立てる
-  | "tests"         // 仮説を検証する実験を実施
-  | "produces"      // 実験が観察結果を生成
-  | "learns"        // 観察結果から学習を得る
-  | "contradicts"   // 証拠が仮説を否定/矛盾
-  | "supports"      // 証拠が仮説を支持/裏付け
-  | "solves";       // 解決策が問題を解決
+export type EdgeType =
+  | "decomposes" // 問題をより小さなサブ問題に分解
+  | "hypothesizes" // 問題に対して仮説を立てる
+  | "tests" // 仮説を検証する実験を実施
+  | "produces" // 実験が観察結果を生成
+  | "learns" // 観察結果から学習を得る
+  | "contradicts" // 証拠が仮説を否定/矛盾
+  | "supports" // 証拠が仮説を支持/裏付け
+  | "solves"; // 解決策が問題を解決
 
 /**
  * 基本ノードインターフェース
@@ -39,7 +45,7 @@ export interface Node {
   metadata: {
     createdAt: Date;
     updatedAt: Date;
-    confidence?: number;  // 信頼度(0-100): 仮説や解決策の確実性
+    confidence?: number; // 信頼度(0-100): 仮説や解決策の確実性
     status?: "open" | "investigating" | "solved" | "abandoned";
     tags: string[];
     // ノードタイプ固有の拡張フィールド用
@@ -54,9 +60,9 @@ export interface Node {
 export interface Edge {
   id: string;
   type: EdgeType;
-  from: string;  // 出発ノードのID
-  to: string;    // 到達ノードのID
-  strength: number;  // 関係の強度(0-1): 1に近いほど強い関係
+  from: string; // 出発ノードのID
+  to: string; // 到達ノードのID
+  strength: number; // 関係の強度(0-1): 1に近いほど強い関係
   metadata?: {
     reasoning?: string;
     evidence?: string;
@@ -72,7 +78,7 @@ export interface Edge {
 export interface DebugGraph {
   nodes: Map<string, Node>;
   edges: Map<string, Edge>;
-  roots: string[];  // ルート問題ノードのIDリスト(親を持たない問題)
+  roots: string[]; // ルート問題ノードのIDリスト(親を持たない問題)
   metadata: {
     createdAt: Date;
     lastModified: Date;
@@ -106,7 +112,7 @@ export interface ProblemNode extends Node {
 export interface HypothesisNode extends Node {
   type: "hypothesis";
   metadata: Node["metadata"] & {
-    confidence: number;  // 信頼度(必須): 仮説の確からしさ
+    confidence: number; // 信頼度(必須): 仮説の確からしさ
     assumptions?: string[];
     testable: boolean;
   };
@@ -143,7 +149,7 @@ export interface ObservationNode extends Node {
 export interface LearningNode extends Node {
   type: "learning";
   metadata: Node["metadata"] & {
-    applicability: string;  // 適用範囲: この学習が有効な状況や条件
+    applicability: string; // 適用範囲: この学習が有効な状況や条件
     confidence: number;
     category?: "pattern" | "anti-pattern" | "best-practice" | "insight";
   };

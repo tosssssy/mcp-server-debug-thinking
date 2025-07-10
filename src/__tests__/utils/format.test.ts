@@ -1,48 +1,48 @@
-import { describe, it, expect } from 'vitest';
-import { createJsonResponse } from '../../utils/format.js';
+import { describe, it, expect } from "vitest";
+import { createJsonResponse } from "../../utils/format.js";
 
-describe('format utils', () => {
-  describe('createJsonResponse', () => {
-    it('should create a valid MCP response for success', () => {
+describe("format utils", () => {
+  describe("createJsonResponse", () => {
+    it("should create a valid MCP response for success", () => {
       const data = {
         success: true,
-        message: 'Operation completed',
+        message: "Operation completed",
         value: 42,
       };
 
       const response = createJsonResponse(data);
 
-      expect(response).toHaveProperty('content');
+      expect(response).toHaveProperty("content");
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].type).toBe('text');
-      
+      expect(response.content[0].type).toBe("text");
+
       const parsedText = JSON.parse(response.content[0].text);
       expect(parsedText).toEqual(data);
       expect(response.isError).toBeUndefined();
     });
 
-    it('should create a valid MCP response for error', () => {
+    it("should create a valid MCP response for error", () => {
       const errorData = {
         success: false,
-        message: 'Something went wrong',
-        code: 'ERROR_001',
+        message: "Something went wrong",
+        code: "ERROR_001",
       };
 
       const response = createJsonResponse(errorData, true);
 
-      expect(response).toHaveProperty('content');
+      expect(response).toHaveProperty("content");
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].type).toBe('text');
-      
+      expect(response.content[0].type).toBe("text");
+
       const parsedText = JSON.parse(response.content[0].text);
       expect(parsedText).toEqual(errorData);
       expect(response.isError).toBe(true);
     });
 
-    it('should format JSON with proper indentation', () => {
+    it("should format JSON with proper indentation", () => {
       const data = {
         nested: {
-          value: 'test',
+          value: "test",
           array: [1, 2, 3],
         },
       };
@@ -56,12 +56,12 @@ describe('format utils', () => {
       expect(text).toContain('    "array": [');
     });
 
-    it('should handle null and undefined values', () => {
+    it("should handle null and undefined values", () => {
       const data = {
         nullValue: null,
         undefinedValue: undefined,
         zero: 0,
-        emptyString: '',
+        emptyString: "",
         false: false,
       };
 
@@ -71,12 +71,12 @@ describe('format utils', () => {
       expect(parsedText.nullValue).toBeNull();
       expect(parsedText.undefinedValue).toBeUndefined();
       expect(parsedText.zero).toBe(0);
-      expect(parsedText.emptyString).toBe('');
+      expect(parsedText.emptyString).toBe("");
       expect(parsedText.false).toBe(false);
     });
 
-    it('should handle arrays', () => {
-      const data = ['item1', 'item2', 'item3'];
+    it("should handle arrays", () => {
+      const data = ["item1", "item2", "item3"];
 
       const response = createJsonResponse(data);
       const parsedText = JSON.parse(response.content[0].text);
@@ -85,20 +85,18 @@ describe('format utils', () => {
       expect(parsedText).toEqual(data);
     });
 
-    it('should handle complex nested structures', () => {
+    it("should handle complex nested structures", () => {
       const data = {
         graph: {
           nodes: [
-            { id: '1', type: 'problem', content: 'Test' },
-            { id: '2', type: 'hypothesis', content: 'Theory' },
+            { id: "1", type: "problem", content: "Test" },
+            { id: "2", type: "hypothesis", content: "Theory" },
           ],
-          edges: [
-            { from: '1', to: '2', type: 'hypothesizes' },
-          ],
+          edges: [{ from: "1", to: "2", type: "hypothesizes" }],
         },
         metadata: {
-          created: new Date('2024-01-01').toISOString(),
-          version: '1.0.0',
+          created: new Date("2024-01-01").toISOString(),
+          version: "1.0.0",
         },
       };
 
@@ -107,10 +105,10 @@ describe('format utils', () => {
 
       expect(parsedText.graph.nodes).toHaveLength(2);
       expect(parsedText.graph.edges).toHaveLength(1);
-      expect(parsedText.metadata.version).toBe('1.0.0');
+      expect(parsedText.metadata.version).toBe("1.0.0");
     });
 
-    it('should handle circular references gracefully', () => {
+    it("should handle circular references gracefully", () => {
       const data: any = { a: 1 };
       data.circular = data; // Create circular reference
 
@@ -118,14 +116,14 @@ describe('format utils', () => {
       expect(() => createJsonResponse(data)).toThrow();
     });
 
-    it('should not include isError when error is false', () => {
-      const data = { message: 'Success' };
+    it("should not include isError when error is false", () => {
+      const data = { message: "Success" };
       const response = createJsonResponse(data, false);
 
       expect(response.isError).toBeUndefined();
     });
 
-    it('should handle empty objects and arrays', () => {
+    it("should handle empty objects and arrays", () => {
       const emptyObj = {};
       const emptyArr: any[] = [];
 

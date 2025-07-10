@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import {
+import type {
   Node,
   Edge,
   DebugGraph,
@@ -11,14 +11,14 @@ import {
   SolutionNode,
 } from "../types/graph.js";
 import {
-  CreateAction,
-  ConnectAction,
-  QueryAction,
-  CreateResponse,
-  ConnectResponse,
-  QueryResponse,
-  SimilarProblemsResult,
-  RecentActivityResult,
+  type CreateAction,
+  type ConnectAction,
+  type QueryAction,
+  type CreateResponse,
+  type ConnectResponse,
+  type QueryResponse,
+  type SimilarProblemsResult,
+  type RecentActivityResult,
   getAutoEdgeType,
 } from "../types/graphActions.js";
 import { logger } from "../utils/logger.js";
@@ -58,7 +58,7 @@ export class GraphService {
       if (loadedGraph) {
         this.graph = loadedGraph;
         logger.success(
-          `Loaded graph with ${this.graph.nodes.size} nodes and ${this.graph.edges.size} edges`,
+          `Loaded graph with ${this.graph.nodes.size} nodes and ${this.graph.edges.size} edges`
         );
 
         // 高速検索のためのインデックスを構築
@@ -115,7 +115,7 @@ export class GraphService {
               success: false,
               message: `Parent node ${action.parentId} not found`,
             },
-            true,
+            true
           );
         }
 
@@ -198,7 +198,7 @@ export class GraphService {
           success: false,
           message: error instanceof Error ? error.message : "Unknown error",
         },
-        true,
+        true
       );
     }
   }
@@ -219,7 +219,7 @@ export class GraphService {
             success: false,
             message: `Node(s) not found: ${!fromNode ? action.from : ""} ${!toNode ? action.to : ""}`,
           },
-          true,
+          true
         );
       }
 
@@ -234,7 +234,7 @@ export class GraphService {
         action.to,
         action.type,
         action.strength,
-        action.metadata,
+        action.metadata
       );
 
       this.graph.edges.set(edge.id, edge);
@@ -271,7 +271,7 @@ export class GraphService {
           success: false,
           message: error instanceof Error ? error.message : "Unknown error",
         },
-        true,
+        true
       );
     }
   }
@@ -300,7 +300,7 @@ export class GraphService {
               success: false,
               message: `Unknown query type: ${action.type}`,
             },
-            true,
+            true
           );
       }
 
@@ -318,7 +318,7 @@ export class GraphService {
           message: error instanceof Error ? error.message : "Unknown error",
           queryTime: Date.now() - startTime,
         },
-        true,
+        true
       );
     }
   }
@@ -365,7 +365,7 @@ export class GraphService {
     to: string,
     type: EdgeType,
     strength: number = 1,
-    metadata?: any,
+    metadata?: any
   ): Edge {
     return {
       id: uuidv4(),
@@ -730,7 +730,7 @@ export class GraphService {
     // トークン化を改善: 記号で分割、3文字以上の意味のある単語を抽出
     const tokenize = (text: string) => {
       return text
-        .split(/[\s\-_\.\/\\:;,\(\)\[\]\{\}<>'"]+/)
+        .split(/[\s\-_./\\:;,()[\]{}<>'"]+/)
         .filter((w) => w.length >= 3 && !/^\d+$/.test(w)); // 数字のみは除外
     };
 
@@ -845,7 +845,7 @@ export class GraphService {
         curr[j] = Math.min(
           prev[j] + 1, // 削除
           curr[j - 1] + 1, // 挿入
-          prev[j - 1] + cost, // 置換
+          prev[j - 1] + cost // 置換
         );
       }
 
@@ -900,7 +900,7 @@ export class GraphService {
           dp[i][j] = Math.min(
             dp[i - 1][j] + 1, // 削除
             dp[i][j - 1] + 1, // 挿入
-            dp[i - 1][j - 1] + cost, // 置換
+            dp[i - 1][j - 1] + cost // 置換
           );
         }
       }
@@ -929,7 +929,7 @@ export class GraphService {
    */
   private async getRecentActivity(params: any): Promise<RecentActivityResult> {
     const limit = params?.limit;
-    
+
     // limit が undefined の場合はデフォルト値を使用
     const effectiveLimit = limit === undefined ? 10 : limit;
 
@@ -971,7 +971,7 @@ export class GraphService {
         }
 
         // 親ノードをインデックスから取得
-        let parent: any = undefined;
+        let parent: any;
         const parentId = this.parentIndex.get(node.id);
         if (parentId) {
           const parentNode = this.graph.nodes.get(parentId);
@@ -1027,7 +1027,7 @@ export class GraphService {
     }
 
     logger.info(
-      `Error type index built: ${this.errorTypeIndex.size} types, ${this.graph.nodes.size} total nodes`,
+      `Error type index built: ${this.errorTypeIndex.size} types, ${this.graph.nodes.size} total nodes`
     );
   }
 
@@ -1075,7 +1075,7 @@ export class GraphService {
     }
 
     logger.info(
-      `Performance indexes built: ${this.nodesByType.size} node types, ${this.edgesByNode.size} nodes indexed`,
+      `Performance indexes built: ${this.nodesByType.size} node types, ${this.edgesByNode.size} nodes indexed`
     );
   }
 

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.1.1/schema.json",
+  "files": {
+    "ignoreUnknown": true,
+    "experimentalScannerIgnores": ["dist", "node_modules", "coverage", "*.js"]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 100,
+    "attributePosition": "auto"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "es5",
+      "arrowParentheses": "always"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "noExtraBooleanCast": "error",
+        "noForEach": "off",
+        "useSimplifiedLogicExpression": "off"
+      },
+      "correctness": {
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error"
+      },
+      "style": {
+        "useConst": "error",
+        "useTemplate": "warn",
+        "noNonNullAssertion": "warn",
+        "useNodejsImportProtocol": "off",
+        "noUselessElse": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn",
+        "noConsole": "off",
+        "noDebugger": "error",
+        "noVar": "error"
+      },
+      "performance": {
+        "noDelete": "off"
+      }
+    }
+  },
+  "assist": {
+    "enabled": false
+  }
+}

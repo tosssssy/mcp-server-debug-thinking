@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { Node, Edge } from "../types/graph.js";
+import type { Node, Edge } from "../types/graph.js";
 import { ActionType } from "../types/graphActions.js";
 
 // Test data factories for cleaner test code
@@ -48,7 +48,12 @@ export const createTestSolution = (overrides: Partial<Node> = {}): Node => ({
   ...overrides,
 });
 
-export const createTestEdge = (from: string, to: string, type: Edge["type"], overrides: Partial<Edge> = {}): Edge => ({
+export const createTestEdge = (
+  from: string,
+  to: string,
+  type: Edge["type"],
+  overrides: Partial<Edge> = {}
+): Edge => ({
   id: uuidv4(),
   type,
   from,
@@ -64,25 +69,43 @@ export const createTestEdge = (from: string, to: string, type: Edge["type"], ove
 // Common test scenarios
 export const createProblemWithSolution = () => {
   const problem = createTestProblem({ content: "Memory leak in event listeners" });
-  const solution = createTestSolution({ 
+  const solution = createTestSolution({
     content: "Remove event listeners in cleanup",
-    metadata: { verified: true, effectiveness: 90, createdAt: new Date(), updatedAt: new Date(), tags: [] },
+    metadata: {
+      verified: true,
+      effectiveness: 90,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tags: [],
+    },
   });
   const edge = createTestEdge(solution.id, problem.id, "solves");
-  
+
   return { problem, solution, edge };
 };
 
 export const createDebugSession = () => {
   const problem = createTestProblem({ content: "Application crashes on startup" });
-  const hypothesis1 = createTestHypothesis({ 
+  const hypothesis1 = createTestHypothesis({
     content: "Memory overflow issue",
-    metadata: { confidence: 80, testable: true, createdAt: new Date(), updatedAt: new Date(), tags: [] },
+    metadata: {
+      confidence: 80,
+      testable: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tags: [],
+    },
   });
-  const hypothesis2 = createTestHypothesis({ 
+  const hypothesis2 = createTestHypothesis({
     content: "Configuration error",
-    metadata: { confidence: 60, testable: true, createdAt: new Date(), updatedAt: new Date(), tags: [] },
+    metadata: {
+      confidence: 60,
+      testable: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tags: [],
+    },
   });
-  
+
   return { problem, hypothesis1, hypothesis2 };
 };

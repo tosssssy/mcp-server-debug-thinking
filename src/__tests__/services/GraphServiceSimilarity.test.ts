@@ -44,10 +44,10 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         const response = JSON.parse(result.content[0].text);
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
-        
+
         // Should have high similarity due to same error type
         const similarity = response.similarProblems[0].similarity;
-        expect(similarity).toBeGreaterThanOrEqual(0.20); // At least the error type contribution
+        expect(similarity).toBeGreaterThanOrEqual(0.2); // At least the error type contribution
       });
 
       it("should give partial score for related error types", async () => {
@@ -143,7 +143,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         const response = JSON.parse(result.content[0].text);
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
-        
+
         // Should have good similarity due to "connect to database server at localhost"
         const similarity = response.similarProblems[0].similarity;
         expect(similarity).toBeGreaterThan(0.3);
@@ -184,25 +184,31 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         });
 
         const response1 = JSON.parse(result1.content[0].text);
-        
+
         // Very similar long messages
         await graphService.create({
           action: ActionType.CREATE,
           nodeType: "problem",
-          content: "Failed to process request due to invalid authentication token provided by the client application",
+          content:
+            "Failed to process request due to invalid authentication token provided by the client application",
         });
 
         const result2 = await graphService.create({
           action: ActionType.CREATE,
           nodeType: "problem",
-          content: "Failed to process request due to invalid authentication token provided by the server backend",
+          content:
+            "Failed to process request due to invalid authentication token provided by the server backend",
         });
 
         const response2 = JSON.parse(result2.content[0].text);
-        
+
         // Both should have high similarity, but the scoring should be proportional
-        if (response1.similarProblems && response1.similarProblems.length > 0 &&
-            response2.similarProblems && response2.similarProblems.length > 0) {
+        if (
+          response1.similarProblems &&
+          response1.similarProblems.length > 0 &&
+          response2.similarProblems &&
+          response2.similarProblems.length > 0
+        ) {
           expect(response1.similarProblems[0].similarity).toBeGreaterThan(0.2);
           expect(response2.similarProblems[0].similarity).toBeGreaterThan(0.4);
         }
@@ -226,16 +232,18 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         const response = JSON.parse(result.content[0].text);
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
-        
+
         // Should have very high similarity (only 1 character difference)
         const similarity = response.similarProblems[0].similarity;
         expect(similarity).toBeGreaterThan(0.45);
       });
 
       it("should calculate word-level similarity for long texts", async () => {
-        const longText1 = "The application failed to start because the required configuration file was not found in the expected location";
-        const longText2 = "The application failed to initialize because the required configuration file was missing from the expected directory";
-        
+        const longText1 =
+          "The application failed to start because the required configuration file was not found in the expected location";
+        const longText2 =
+          "The application failed to initialize because the required configuration file was missing from the expected directory";
+
         await graphService.create({
           action: ActionType.CREATE,
           nodeType: "problem",
@@ -293,7 +301,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         const response = JSON.parse(result.content[0].text);
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
-        
+
         // Should match the "cannot read property" pattern
         expect(response.similarProblems[0].similarity).toBeGreaterThan(0.4);
       });
@@ -376,7 +384,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         const response = JSON.parse(result.content[0].text);
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
-        
+
         // Should match despite different delimiters
         expect(response.similarProblems[0].similarity).toBeGreaterThan(0.4);
       });
@@ -440,7 +448,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         const response = JSON.parse(result.content[0].text);
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
-        
+
         // Should match the 'express' identifier
         expect(response.similarProblems[0].similarity).toBeGreaterThan(0.25);
       });
@@ -497,13 +505,14 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         const result = await graphService.create({
           action: ActionType.CREATE,
           nodeType: "problem",
-          content: "TypeError: Cannot read property 'email' of undefined in UserService.getProfile()",
+          content:
+            "TypeError: Cannot read property 'email' of undefined in UserService.getProfile()",
         });
 
         const response = JSON.parse(result.content[0].text);
         expect(response.similarProblems).toBeDefined();
         expect(response.similarProblems.length).toBeGreaterThan(0);
-        
+
         // Should have high similarity due to:
         // - Same error type (20%)
         // - Common substring "Cannot read property" and "of undefined" (20%)
@@ -592,7 +601,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      
+
       // Should only return highly similar problems
       if (response.results.problems.length > 0) {
         response.results.problems.forEach((p: any) => {
@@ -659,7 +668,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       // Create 100 problems with various error types
       const errorTypes = ["TypeError", "ReferenceError", "SyntaxError", "RangeError", "Error"];
       const components = ["UserService", "AuthModule", "Database", "API", "Cache"];
-      
+
       for (let i = 0; i < 100; i++) {
         const errorType = errorTypes[i % errorTypes.length];
         const component = components[Math.floor(i / 20)];
@@ -684,7 +693,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(queryTime).toBeLessThan(200); // Should be fast even with complex similarity calculation
-      
+
       // Should find relevant results
       if (response.results.problems.length > 0) {
         const topResult = response.results.problems[0];
@@ -721,7 +730,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(searchTime).toBeLessThan(100); // Should be very fast with indexing
-      
+
       // Should primarily find TypeError problems
       if (response.similarProblems && response.similarProblems.length > 0) {
         const typeErrorCount = response.similarProblems.filter((p: any) =>
@@ -757,7 +766,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
     it("should handle very long texts", async () => {
       const longText1 = "Error: " + "x".repeat(1000) + " in module";
       const longText2 = "Error: " + "x".repeat(990) + " in module";
-      
+
       await graphService.create({
         action: ActionType.CREATE,
         nodeType: "problem",
@@ -863,7 +872,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.similarProblems).toBeDefined();
       expect(response.similarProblems.length).toBeGreaterThan(0);
-      
+
       // All three problems are about the same React issue
       response.similarProblems.forEach((p: any) => {
         expect(p.similarity).toBeGreaterThan(0.25);
@@ -926,7 +935,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         // Should match API user endpoint 404 errors
         response.similarProblems.forEach((p: any) => {
           expect(p.content).toMatch(/404|users/i);
-          expect(p.similarity).toBeGreaterThan(0.20);
+          expect(p.similarity).toBeGreaterThan(0.2);
         });
       }
     });
@@ -941,7 +950,8 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
       await graphService.create({
         action: ActionType.CREATE,
         nodeType: "problem",
-        content: "ERROR in ./src/app/index.js Module not found: Cannot resolve './components/Footer'",
+        content:
+          "ERROR in ./src/app/index.js Module not found: Cannot resolve './components/Footer'",
       });
 
       const result = await graphService.create({
@@ -955,7 +965,7 @@ describe("GraphService - Enhanced Similarity Calculation", () => {
         // Should match module resolution errors
         response.similarProblems.forEach((p: any) => {
           expect(p.content.toLowerCase()).toContain("module not found");
-          expect(p.similarity).toBeGreaterThan(0.20);
+          expect(p.similarity).toBeGreaterThan(0.2);
         });
       }
     });

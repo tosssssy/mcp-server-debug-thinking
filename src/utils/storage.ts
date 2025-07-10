@@ -38,7 +38,7 @@ export async function writeJsonFile<T>(filePath: string, data: T): Promise<void>
 export async function listJsonFiles(dirPath: string): Promise<string[]> {
   try {
     const files = await fs.readdir(dirPath);
-    return files.filter(f => f.endsWith(".json"));
+    return files.filter((f) => f.endsWith(".json"));
   } catch (error) {
     if ((error as any).code === "ENOENT") {
       return [];
@@ -51,7 +51,7 @@ export async function listJsonFiles(dirPath: string): Promise<string[]> {
 // JSONL operations
 export async function appendJsonLine<T>(filePath: string, data: T): Promise<void> {
   try {
-    const line = `${JSON.stringify(data)  }\n`;
+    const line = `${JSON.stringify(data)}\n`;
     await fs.appendFile(filePath, line, "utf-8");
   } catch (error) {
     logger.error(`Failed to append to JSONL file ${filePath}:`, error);
@@ -121,4 +121,3 @@ export async function fileExists(filePath: string): Promise<boolean> {
     return false;
   }
 }
-

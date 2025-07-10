@@ -1,9 +1,9 @@
 import path from "path";
 import os from "os";
 import fs from "fs/promises";
-import { Node, Edge, DebugGraph } from "../types/graph.js";
-import { 
-  ensureDirectory, 
+import type { Node, Edge, DebugGraph } from "../types/graph.js";
+import {
+  ensureDirectory,
   writeJsonFile,
   appendJsonLine,
   readJsonLines,
@@ -72,10 +72,12 @@ export class GraphStorage {
       // メタデータが存在する場合のみ日付をISO文字列に変換
       const serializable = {
         ...edge,
-        metadata: edge.metadata ? {
-          ...edge.metadata,
-          createdAt: edge.metadata.createdAt.toISOString(),
-        } : undefined,
+        metadata: edge.metadata
+          ? {
+              ...edge.metadata,
+              createdAt: edge.metadata.createdAt.toISOString(),
+            }
+          : undefined,
       };
       await appendJsonLine(this.edgesFile, serializable);
     } catch (error) {
@@ -164,7 +166,7 @@ export class GraphStorage {
         for (const node of nodes) {
           nodeMap.set(node.id, node);
         }
-        
+
         for (const node of nodeMap.values()) {
           graph.nodes.set(node.id, {
             ...node,
@@ -185,14 +187,16 @@ export class GraphStorage {
         for (const edge of edges) {
           edgeMap.set(edge.id, edge);
         }
-        
+
         for (const edge of edgeMap.values()) {
           graph.edges.set(edge.id, {
             ...edge,
-            metadata: edge.metadata ? {
-              ...edge.metadata,
-              createdAt: new Date(edge.metadata.createdAt),
-            } : undefined,
+            metadata: edge.metadata
+              ? {
+                  ...edge.metadata,
+                  createdAt: new Date(edge.metadata.createdAt),
+                }
+              : undefined,
           });
         }
       }

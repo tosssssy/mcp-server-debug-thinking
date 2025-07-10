@@ -1,4 +1,4 @@
-import { NodeType, EdgeType } from "./graph.js";
+import type { NodeType, EdgeType } from "./graph.js";
 
 /**
  * グラフ操作用アクションタイプ
@@ -7,7 +7,7 @@ import { NodeType, EdgeType } from "./graph.js";
 export enum ActionType {
   CREATE = "create",
   CONNECT = "connect",
-  QUERY = "query"
+  QUERY = "query",
 }
 
 /**
@@ -26,7 +26,7 @@ export interface CreateAction extends BaseAction {
   action: ActionType.CREATE;
   nodeType: NodeType;
   content: string;
-  parentId?: string;  // 親ノードID: 指定時は親子関係のエッジを自動作成
+  parentId?: string; // 親ノードID: 指定時は親子関係のエッジを自動作成
   metadata?: {
     confidence?: number;
     tags?: string[];
@@ -40,10 +40,10 @@ export interface CreateAction extends BaseAction {
  */
 export interface ConnectAction extends BaseAction {
   action: ActionType.CONNECT;
-  from: string;  // ソースノードID: 関係の出発点
-  to: string;    // ターゲットノードID: 関係の到達点
+  from: string; // ソースノードID: 関係の出発点
+  to: string; // ターゲットノードID: 関係の到達点
   type: EdgeType;
-  strength?: number;  // 関係の強度(0-1): 未指定時は1(最強)
+  strength?: number; // 関係の強度(0-1): 未指定時は1(最強)
   metadata?: {
     reasoning?: string;
     evidence?: string;
@@ -55,9 +55,9 @@ export interface ConnectAction extends BaseAction {
  * クエリタイプ: グラフに対する検索・分析操作
  * Claude Codeでの実用性を重視した最小限のセット
  */
-export type QueryType = 
-  | "similar-problems"      // 類似問題検索: 過去の類似エラーとその解決策を取得
-  | "recent-activity";      // 最近の活動: 直近のデバッグノードを時系列で取得
+export type QueryType =
+  | "similar-problems" // 類似問題検索: 過去の類似エラーとその解決策を取得
+  | "recent-activity"; // 最近の活動: 直近のデバッグノードを時系列で取得
 
 /**
  * QUERYアクション: グラフデータの検索・分析
@@ -67,8 +67,8 @@ export interface QueryAction extends BaseAction {
   action: ActionType.QUERY;
   type: QueryType;
   parameters?: {
-    pattern?: string;       // similar-problems用: 検索パターン
-    limit?: number;         // 結果件数上限: デフォルト10件
+    pattern?: string; // similar-problems用: 検索パターン
+    limit?: number; // 結果件数上限: デフォルト10件
     minSimilarity?: number; // similar-problems用: 最小類似度（0-1）
   };
 }
@@ -89,7 +89,7 @@ export type GraphAction = CreateAction | ConnectAction | QueryAction;
 export interface CreateResponse {
   success: boolean;
   nodeId?: string;
-  edgeId?: string;  // 自動作成されたエッジのID(parentId指定時)
+  edgeId?: string; // 自動作成されたエッジのID(parentId指定時)
   message?: string;
   suggestions?: {
     relatedProblems?: string[];
@@ -118,7 +118,8 @@ export interface ConnectResponse {
   success: boolean;
   edgeId?: string;
   message?: string;
-  conflicts?: {  // 矛盾検出: supportsとcontradictsが共存する場合等
+  conflicts?: {
+    // 矛盾検出: supportsとcontradictsが共存する場合等
     conflictingEdges: string[];
     explanation: string;
   };
@@ -130,9 +131,9 @@ export interface ConnectResponse {
  */
 export interface QueryResponse {
   success: boolean;
-  results?: any;  // 実際の型はクエリタイプごとの専用インターフェースを参照
+  results?: any; // 実際の型はクエリタイプごとの専用インターフェースを参照
   message?: string;
-  queryTime?: number;  // クエリ実行時間(ミリ秒): パフォーマンス指標
+  queryTime?: number; // クエリ実行時間(ミリ秒): パフォーマンス指標
 }
 
 /**
@@ -147,8 +148,8 @@ export interface SimilarProblemsResult {
   problems: Array<{
     nodeId: string;
     content: string;
-    similarity: number;  // 類似度スコア(0-1): 1に近いほど類似
-    errorType?: string;  // エラータイプ（例：'type error'）
+    similarity: number; // 類似度スコア(0-1): 1に近いほど類似
+    errorType?: string; // エラータイプ（例：'type error'）
     status: "open" | "investigating" | "solved" | "abandoned";
     // 解決策の詳細情報
     solutions: Array<{
@@ -174,7 +175,7 @@ export interface RecentActivityResult {
     nodeId: string;
     type: NodeType;
     content: string;
-    createdAt: string;  // ISO 8601形式
+    createdAt: string; // ISO 8601形式
     // 親ノードがある場合はその情報
     parent?: {
       nodeId: string;
@@ -188,9 +189,8 @@ export interface RecentActivityResult {
       direction: "from" | "to";
     }>;
   }>;
-  totalNodes: number;  // グラフ内の総ノード数
+  totalNodes: number; // グラフ内の総ノード数
 }
-
 
 /**
  * 親子関係から適切なエッジタイプを自動判定
@@ -208,6 +208,6 @@ export function getAutoEdgeType(parentType: NodeType, childType: NodeType): Edge
     "observation-learning": "learns",
     "solution-problem": "solves",
   };
-  
+
   return mapping[`${parentType}-${childType}`] || null;
 }
