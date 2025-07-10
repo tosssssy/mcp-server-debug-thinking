@@ -1,16 +1,16 @@
-import path from 'path';
-import os from 'os';
-import fs from 'fs/promises';
-import { Node, Edge, DebugGraph } from '../types/graph.js';
+import path from "path";
+import os from "os";
+import fs from "fs/promises";
+import { Node, Edge, DebugGraph } from "../types/graph.js";
 import { 
   ensureDirectory, 
   writeJsonFile,
   appendJsonLine,
   readJsonLines,
-  fileExists
-} from '../utils/storage.js';
-import { logger } from '../utils/logger.js';
-import { DATA_DIR_NAME } from '../constants.js';
+  fileExists,
+} from "../utils/storage.js";
+import { logger } from "../utils/logger.js";
+import { DATA_DIR_NAME } from "../constants.js";
 
 /**
  * グラフデータの永続化を担当するストレージクラス
@@ -31,9 +31,9 @@ export class GraphStorage {
   constructor() {
     const baseDir = process.env.DEBUG_DATA_DIR || process.cwd();
     this.dataDir = path.join(baseDir, DATA_DIR_NAME);
-    this.nodesFile = path.join(this.dataDir, 'nodes.jsonl');
-    this.edgesFile = path.join(this.dataDir, 'edges.jsonl');
-    this.metadataFile = path.join(this.dataDir, 'graph-metadata.json');
+    this.nodesFile = path.join(this.dataDir, "nodes.jsonl");
+    this.edgesFile = path.join(this.dataDir, "edges.jsonl");
+    this.metadataFile = path.join(this.dataDir, "graph-metadata.json");
   }
 
   /**
@@ -53,12 +53,12 @@ export class GraphStorage {
         metadata: {
           ...node.metadata,
           createdAt: node.metadata.createdAt.toISOString(),
-          updatedAt: node.metadata.updatedAt.toISOString()
-        }
+          updatedAt: node.metadata.updatedAt.toISOString(),
+        },
       };
       await appendJsonLine(this.nodesFile, serializable);
     } catch (error) {
-      logger.error('Failed to save node:', error);
+      logger.error("Failed to save node:", error);
       throw error;
     }
   }
@@ -74,12 +74,12 @@ export class GraphStorage {
         ...edge,
         metadata: edge.metadata ? {
           ...edge.metadata,
-          createdAt: edge.metadata.createdAt.toISOString()
-        } : undefined
+          createdAt: edge.metadata.createdAt.toISOString(),
+        } : undefined,
       };
       await appendJsonLine(this.edgesFile, serializable);
     } catch (error) {
-      logger.error('Failed to save edge:', error);
+      logger.error("Failed to save edge:", error);
       throw error;
     }
   }
@@ -97,11 +97,11 @@ export class GraphStorage {
         lastModified: graph.metadata.lastModified.toISOString(),
         roots: graph.roots,
         nodeCount: graph.nodes.size,
-        edgeCount: graph.edges.size
+        edgeCount: graph.edges.size,
       };
       await writeJsonFile(this.metadataFile, metadata);
     } catch (error) {
-      logger.error('Failed to save graph metadata:', error);
+      logger.error("Failed to save graph metadata:", error);
       throw error;
     }
   }
@@ -128,23 +128,23 @@ export class GraphStorage {
       let metadata: any = {
         createdAt: new Date(),
         lastModified: new Date(),
-        sessionCount: 0
+        sessionCount: 0,
       };
       let roots: string[] = [];
 
       if (hasMetadata) {
         try {
-          const content = await fs.readFile(this.metadataFile, 'utf-8');
+          const content = await fs.readFile(this.metadataFile, "utf-8");
           const meta = JSON.parse(content);
           metadata = {
             ...meta,
             createdAt: new Date(meta.createdAt),
-            lastModified: new Date(meta.lastModified)
+            lastModified: new Date(meta.lastModified),
           };
           // ルート問題ノードのIDリストを復元
           roots = meta.roots || [];
         } catch (error) {
-          logger.error('Failed to load metadata:', error);
+          logger.error("Failed to load metadata:", error);
         }
       }
 
@@ -153,7 +153,7 @@ export class GraphStorage {
         nodes: new Map(),
         edges: new Map(),
         roots,
-        metadata
+        metadata,
       };
 
       // JSONLファイルからすべてのノードを読み込み
@@ -171,8 +171,8 @@ export class GraphStorage {
             metadata: {
               ...node.metadata,
               createdAt: new Date(node.metadata.createdAt),
-              updatedAt: new Date(node.metadata.updatedAt)
-            }
+              updatedAt: new Date(node.metadata.updatedAt),
+            },
           });
         }
       }
@@ -191,15 +191,15 @@ export class GraphStorage {
             ...edge,
             metadata: edge.metadata ? {
               ...edge.metadata,
-              createdAt: new Date(edge.metadata.createdAt)
-            } : undefined
+              createdAt: new Date(edge.metadata.createdAt),
+            } : undefined,
           });
         }
       }
 
       return graph;
     } catch (error) {
-      logger.error('Failed to load graph:', error);
+      logger.error("Failed to load graph:", error);
       return null;
     }
   }

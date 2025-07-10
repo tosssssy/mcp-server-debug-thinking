@@ -4,9 +4,9 @@ export function createJsonResponse(data: any, error?: boolean): {
 } {
   return {
     content: [{
-      type: 'text',
-      text: JSON.stringify(data, null, 2)
+      type: "text",
+      text: JSON.stringify(data, null, 2),
     }],
-    ...(error && { isError: true })
+    ...(error && { isError: true }),
   };
 }

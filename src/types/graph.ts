@@ -12,21 +12,21 @@
  * - learning: 観察から得た知見
  * - solution: 問題の解決策
  */
-export type NodeType = 'problem' | 'hypothesis' | 'experiment' | 'observation' | 'learning' | 'solution';
+export type NodeType = "problem" | "hypothesis" | "experiment" | "observation" | "learning" | "solution";
 
 /**
  * エッジタイプ: ノード間の意味的な関係を定義
  * 各タイプはデバッグプロセスの自然な流れを表現
  */
 export type EdgeType = 
-  | 'decomposes'    // 問題をより小さなサブ問題に分解
-  | 'hypothesizes'  // 問題に対して仮説を立てる
-  | 'tests'         // 仮説を検証する実験を実施
-  | 'produces'      // 実験が観察結果を生成
-  | 'learns'        // 観察結果から学習を得る
-  | 'contradicts'   // 証拠が仮説を否定/矛盾
-  | 'supports'      // 証拠が仮説を支持/裏付け
-  | 'solves';       // 解決策が問題を解決
+  | "decomposes"    // 問題をより小さなサブ問題に分解
+  | "hypothesizes"  // 問題に対して仮説を立てる
+  | "tests"         // 仮説を検証する実験を実施
+  | "produces"      // 実験が観察結果を生成
+  | "learns"        // 観察結果から学習を得る
+  | "contradicts"   // 証拠が仮説を否定/矛盾
+  | "supports"      // 証拠が仮説を支持/裏付け
+  | "solves";       // 解決策が問題を解決
 
 /**
  * 基本ノードインターフェース
@@ -40,7 +40,7 @@ export interface Node {
     createdAt: Date;
     updatedAt: Date;
     confidence?: number;  // 信頼度(0-100): 仮説や解決策の確実性
-    status?: 'open' | 'investigating' | 'solved' | 'abandoned';
+    status?: "open" | "investigating" | "solved" | "abandoned";
     tags: string[];
     // ノードタイプ固有の拡張フィールド用
     [key: string]: any;
@@ -88,8 +88,8 @@ export interface DebugGraph {
  * 問題ノード: デバッグ対象のエラーや不具合
  */
 export interface ProblemNode extends Node {
-  type: 'problem';
-  metadata: Node['metadata'] & {
+  type: "problem";
+  metadata: Node["metadata"] & {
     errorMessage?: string;
     context?: {
       language?: string;
@@ -104,8 +104,8 @@ export interface ProblemNode extends Node {
  * 仮説ノード: 問題の原因に関する推測
  */
 export interface HypothesisNode extends Node {
-  type: 'hypothesis';
-  metadata: Node['metadata'] & {
+  type: "hypothesis";
+  metadata: Node["metadata"] & {
     confidence: number;  // 信頼度(必須): 仮説の確からしさ
     assumptions?: string[];
     testable: boolean;
@@ -116,8 +116,8 @@ export interface HypothesisNode extends Node {
  * 実験ノード: 仮説を検証するためのアクション
  */
 export interface ExperimentNode extends Node {
-  type: 'experiment';
-  metadata: Node['metadata'] & {
+  type: "experiment";
+  metadata: Node["metadata"] & {
     code?: string;
     commands?: string[];
     expectedOutcome: string;
@@ -129,8 +129,8 @@ export interface ExperimentNode extends Node {
  * 観察ノード: 実験の結果として得られたデータ
  */
 export interface ObservationNode extends Node {
-  type: 'observation';
-  metadata: Node['metadata'] & {
+  type: "observation";
+  metadata: Node["metadata"] & {
     output?: string;
     metrics?: Record<string, any>;
     unexpected?: boolean;
@@ -141,11 +141,11 @@ export interface ObservationNode extends Node {
  * 学習ノード: デバッグプロセスから得た知見や教訓
  */
 export interface LearningNode extends Node {
-  type: 'learning';
-  metadata: Node['metadata'] & {
+  type: "learning";
+  metadata: Node["metadata"] & {
     applicability: string;  // 適用範囲: この学習が有効な状況や条件
     confidence: number;
-    category?: 'pattern' | 'anti-pattern' | 'best-practice' | 'insight';
+    category?: "pattern" | "anti-pattern" | "best-practice" | "insight";
   };
 }
 
@@ -153,8 +153,8 @@ export interface LearningNode extends Node {
  * 解決策ノード: 問題を解決する具体的な方法
  */
 export interface SolutionNode extends Node {
-  type: 'solution';
-  metadata: Node['metadata'] & {
+  type: "solution";
+  metadata: Node["metadata"] & {
     implementation: string;
     verified: boolean;
     sideEffects?: string[];
@@ -167,25 +167,25 @@ export interface SolutionNode extends Node {
  * ノードが特定の型であることを安全にチェック
  */
 export function isProblemNode(node: Node): node is ProblemNode {
-  return node.type === 'problem';
+  return node.type === "problem";
 }
 
 export function isHypothesisNode(node: Node): node is HypothesisNode {
-  return node.type === 'hypothesis';
+  return node.type === "hypothesis";
 }
 
 export function isExperimentNode(node: Node): node is ExperimentNode {
-  return node.type === 'experiment';
+  return node.type === "experiment";
 }
 
 export function isObservationNode(node: Node): node is ObservationNode {
-  return node.type === 'observation';
+  return node.type === "observation";
 }
 
 export function isLearningNode(node: Node): node is LearningNode {
-  return node.type === 'learning';
+  return node.type === "learning";
 }
 
 export function isSolutionNode(node: Node): node is SolutionNode {
-  return node.type === 'solution';
+  return node.type === "solution";
 }

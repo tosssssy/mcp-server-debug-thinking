@@ -135,7 +135,7 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
-  }
+  },
 );
 
 const graphService = new GraphService();
@@ -160,7 +160,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           parentId: args.parentId as string,
           metadata: args.metadata as any,
         };
-        return await graphService.create(graphAction as CreateAction);
+        return await graphService.create(graphAction);
 
       case ActionType.CONNECT:
         graphAction = {
@@ -171,7 +171,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           strength: args.strength as number,
           metadata: args.metadata as any,
         };
-        return await graphService.connect(graphAction as ConnectAction);
+        return await graphService.connect(graphAction);
 
       case ActionType.QUERY:
         graphAction = {
@@ -179,7 +179,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           type: args.queryType as any,
           parameters: args.parameters as any,
         };
-        return await graphService.query(graphAction as QueryAction);
+        return await graphService.query(graphAction);
 
       default:
         return createJsonResponse(
@@ -187,7 +187,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             error: `Unknown action: ${action}`,
             validActions: Object.values(ActionType),
           },
-          true
+          true,
         );
     }
   }
@@ -196,7 +196,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     {
       error: `Unknown tool: ${request.params.name}`,
     },
-    true
+    true,
   );
 });
 

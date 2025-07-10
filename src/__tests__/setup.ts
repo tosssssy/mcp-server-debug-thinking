@@ -1,14 +1,14 @@
-import { vi, beforeEach, afterAll } from 'vitest';
-import fs from 'fs/promises';
-import path from 'path';
+import { vi, beforeEach, afterAll } from "vitest";
+import fs from "fs/promises";
+import path from "path";
 
 // Mock environment variables
-process.env.DEBUG_DATA_DIR = path.join(__dirname, 'test-data');
-process.env.DISABLE_DEBUG_LOGGING = 'true';
+process.env.DEBUG_DATA_DIR = path.join(__dirname, "test-data");
+process.env.DISABLE_DEBUG_LOGGING = "true";
 
 // Clean up test data directory before each test
 beforeEach(async () => {
-  const testDataDir = path.join(__dirname, 'test-data');
+  const testDataDir = path.join(__dirname, "test-data");
   try {
     await fs.rm(testDataDir, { recursive: true, force: true });
   } catch (error) {
@@ -18,7 +18,7 @@ beforeEach(async () => {
 
 // Clean up after all tests
 afterAll(async () => {
-  const testDataDir = path.join(__dirname, 'test-data');
+  const testDataDir = path.join(__dirname, "test-data");
   try {
     await fs.rm(testDataDir, { recursive: true, force: true });
   } catch (error) {

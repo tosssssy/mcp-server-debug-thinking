@@ -49,6 +49,6 @@ module.exports = {
     'dist/',
     'node_modules/',
     '*.js',
-    '!.eslintrc.js',
+    '!.eslintrc.cjs',
   ],
 }

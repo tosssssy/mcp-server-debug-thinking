@@ -1,13 +1,13 @@
-import { NodeType, EdgeType } from './graph.js';
+import { NodeType, EdgeType } from "./graph.js";
 
 /**
  * グラフ操作用アクションタイプ
  * MCPツールが受け付ける3つの基本操作
  */
 export enum ActionType {
-  CREATE = 'create',
-  CONNECT = 'connect',
-  QUERY = 'query'
+  CREATE = "create",
+  CONNECT = "connect",
+  QUERY = "query"
 }
 
 /**
@@ -56,8 +56,8 @@ export interface ConnectAction extends BaseAction {
  * Claude Codeでの実用性を重視した最小限のセット
  */
 export type QueryType = 
-  | 'similar-problems'      // 類似問題検索: 過去の類似エラーとその解決策を取得
-  | 'recent-activity';      // 最近の活動: 直近のデバッグノードを時系列で取得
+  | "similar-problems"      // 類似問題検索: 過去の類似エラーとその解決策を取得
+  | "recent-activity";      // 最近の活動: 直近のデバッグノードを時系列で取得
 
 /**
  * QUERYアクション: グラフデータの検索・分析
@@ -101,7 +101,7 @@ export interface CreateResponse {
     nodeId: string;
     content: string;
     similarity: number;
-    status?: 'open' | 'investigating' | 'solved' | 'abandoned';
+    status?: "open" | "investigating" | "solved" | "abandoned";
     solutions: Array<{
       nodeId: string;
       content: string;
@@ -149,7 +149,7 @@ export interface SimilarProblemsResult {
     content: string;
     similarity: number;  // 類似度スコア(0-1): 1に近いほど類似
     errorType?: string;  // エラータイプ（例：'type error'）
-    status: 'open' | 'investigating' | 'solved' | 'abandoned';
+    status: "open" | "investigating" | "solved" | "abandoned";
     // 解決策の詳細情報
     solutions: Array<{
       nodeId: string;
@@ -185,7 +185,7 @@ export interface RecentActivityResult {
     edges: Array<{
       type: EdgeType;
       targetNodeId: string;
-      direction: 'from' | 'to';
+      direction: "from" | "to";
     }>;
   }>;
   totalNodes: number;  // グラフ内の総ノード数
@@ -201,12 +201,12 @@ export interface RecentActivityResult {
  */
 export function getAutoEdgeType(parentType: NodeType, childType: NodeType): EdgeType | null {
   const mapping: Record<string, EdgeType> = {
-    'problem-problem': 'decomposes',
-    'problem-hypothesis': 'hypothesizes',
-    'hypothesis-experiment': 'tests',
-    'experiment-observation': 'produces',
-    'observation-learning': 'learns',
-    'solution-problem': 'solves',
+    "problem-problem": "decomposes",
+    "problem-hypothesis": "hypothesizes",
+    "hypothesis-experiment": "tests",
+    "experiment-observation": "produces",
+    "observation-learning": "learns",
+    "solution-problem": "solves",
   };
   
   return mapping[`${parentType}-${childType}`] || null;

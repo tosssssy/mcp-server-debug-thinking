@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import chalk from "chalk";
 
 export enum LogLevel {
   DEBUG = 0,
@@ -13,7 +13,7 @@ export class Logger {
   private disableLogging: boolean;
 
   constructor() {
-    this.disableLogging = (process.env.DISABLE_DEBUG_LOGGING || '').toLowerCase() === 'true';
+    this.disableLogging = (process.env.DISABLE_DEBUG_LOGGING || "").toLowerCase() === "true";
     this.level = this.disableLogging ? LogLevel.NONE : LogLevel.INFO;
     
     // ログレベルのオーバーライドを許可
@@ -65,9 +65,9 @@ export class Logger {
     }
   }
 
-  session(action: 'start' | 'end', sessionId: string): void {
+  session(action: "start" | "end", sessionId: string): void {
     if (this.level <= LogLevel.INFO) {
-      if (action === 'start') {
+      if (action === "start") {
         console.error(chalk.bold.blue(`\n🚀 Started debug session: ${sessionId}\n`));
       } else {
         console.error(chalk.bold.red(`\n🏁 Ended debug session: ${sessionId}\n`));
@@ -77,7 +77,7 @@ export class Logger {
 
   search(query: any, resultCount: number): void {
     if (this.level <= LogLevel.INFO) {
-      console.error(chalk.cyan(`🔍 Searching with query:`), query);
+      console.error(chalk.cyan("🔍 Searching with query:"), query);
       console.error(chalk.green(`✓ Found ${resultCount} matches`));
     }
   }
