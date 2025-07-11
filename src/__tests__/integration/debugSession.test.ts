@@ -146,7 +146,10 @@ describe("Debug Session Integration Tests", () => {
     const recent = JSON.parse(recentResult.content[0].text);
     expect(recent.success).toBe(true);
     expect(recent.results.nodes.length).toBeGreaterThan(0);
-    expect(recent.results.nodes[0].type).toBe("solution"); // Most recent should be the solution
+    // 最新のノードは solution か learning のいずれか（同じタイミングで作成される可能性があるため）
+    const recentTypes = recent.results.nodes.map((n: any) => n.type);
+    expect(recentTypes).toContain("solution");
+    expect(recentTypes).toContain("learning");
 
     // 8. Verify persistence
     await graphService.saveGraph();

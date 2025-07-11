@@ -7,6 +7,10 @@
     "Context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "debug-thinking": {
+      "command": "npx",
+      "args": ["mcp-server-debug-thinking@latest"]
     }
   }
 }

@@ -60,11 +60,11 @@ export class GraphService {
         logger.success(
           `Loaded graph with ${this.graph.nodes.size} nodes and ${this.graph.edges.size} edges`
         );
-
-        // 高速検索のためのインデックスを構築
-        this.buildErrorTypeIndex();
-        this.buildPerformanceIndexes();
       }
+      
+      // 高速検索のためのインデックスを構築（新規・既存どちらの場合も必要）
+      this.buildErrorTypeIndex();
+      this.buildPerformanceIndexes();
     } catch (error) {
       logger.error("Failed to initialize GraphService:", error);
       throw error;
@@ -481,7 +481,7 @@ export class GraphService {
       }>;
     }> = [];
     const pattern = params?.pattern || "";
-    const minSimilarity = params?.minSimilarity || 0.2;
+    const minSimilarity = params?.minSimilarity !== undefined ? params.minSimilarity : 0.2;
     const errorType = this.extractErrorType(pattern);
 
     // エラータイプ別インデックスを使用して検索対象を効率的に絞り込む
@@ -496,24 +496,15 @@ export class GraphService {
       } else {
         candidateNodeIds = new Set();
       }
-    } else if (!errorType && this.errorTypeIndex.has("other")) {
-      // エラータイプが抽出できない場合は 'other' カテゴリを検索
-      const otherSet = this.errorTypeIndex.get("other");
-      if (otherSet) {
-        candidateNodeIds = otherSet;
-        logger.debug(`Searching ${candidateNodeIds.size} nodes without specific error type`);
-      } else {
-        candidateNodeIds = new Set();
-      }
     } else {
-      // インデックスが未構築の場合は全問題ノードを総当たり（フォールバック）
+      // エラータイプが抽出できない場合は全問題ノードを検索対象に
       candidateNodeIds = new Set();
       for (const [nodeId, node] of this.graph.nodes) {
         if (node.type === "problem") {
           candidateNodeIds.add(nodeId);
         }
       }
-      logger.debug(`Fallback: searching all ${candidateNodeIds.size} problem nodes`);
+      logger.debug(`Searching all ${candidateNodeIds.size} problem nodes (no specific error type)`);
     }
 
     // 絞り込まれた候補に対して類似度計算を実施
@@ -721,11 +712,23 @@ export class GraphService {
     }
 
     // スコア計算: 部分文字列マッチング(20%の重み)
-    const longestCommonSubstring = this.findLongestCommonSubstring(p1, p2);
-    const avgLength = (p1.length + p2.length) / 2;
-    if (longestCommonSubstring.length > 5) {
-      // 5文字以上の共通部分文字列
-      score += Math.min(0.2, (longestCommonSubstring.length / avgLength) * 0.4);
+    // 長いテキストの場合はスキップしてパフォーマンスを優先
+    if (p1.length < 200 && p2.length < 200) {
+      const longestCommonSubstring = this.findLongestCommonSubstring(p1, p2);
+      const avgLength = (p1.length + p2.length) / 2;
+      if (longestCommonSubstring.length > 5) {
+        // 5文字以上の共通部分文字列
+        score += Math.min(0.2, (longestCommonSubstring.length / avgLength) * 0.4);
+      }
+    } else {
+      // 長いテキストの場合は単語の共通割合で代替
+      const words1 = new Set(p1.split(/\s+/));
+      const words2 = new Set(p2.split(/\s+/));
+      const commonWords = [...words1].filter(w => words2.has(w)).length;
+      const totalUniqueWords = new Set([...words1, ...words2]).size;
+      if (totalUniqueWords > 0) {
+        score += (commonWords / totalUniqueWords) * 0.2;
+      }
     }
 
     // スコア計算: 編集距離による類似度(15%の重み)
@@ -838,6 +841,10 @@ export class GraphService {
       score += (commonIds.size / Math.max(ids1.size, ids2.size)) * 0.1;
     }
 
+    // NaN や負の値を防ぐ
+    if (Number.isNaN(score) || score < 0) {
+      return 0;
+    }
     return Math.min(score, 1.0);
   }
 
@@ -954,14 +961,11 @@ export class GraphService {
         if (words1[i - 1] === words2[j - 1]) {
           dp[i][j] = dp[i - 1][j - 1];
         } else {
-          // 部分的な類似性も考慮
-          const similarity = this.calculateLevenshteinSimilarity(words1[i - 1], words2[j - 1]);
-          const cost = similarity > 0.7 ? 0.3 : 1; // 70%以上類似していれば低コスト
-
+          // 単語が完全に一致しない場合は編集コスト1とする（パフォーマンスのため）
           dp[i][j] = Math.min(
             dp[i - 1][j] + 1, // 削除
             dp[i][j - 1] + 1, // 挿入
-            dp[i - 1][j - 1] + cost // 置換
+            dp[i - 1][j - 1] + 1 // 置換
           );
         }
       }
@@ -1003,8 +1007,14 @@ export class GraphService {
     }
 
     // すべてのノードを配列に変換して時刻でソート
+    // 同じタイムスタンプの場合はIDで安定ソート
     const sortedNodes = Array.from(this.graph.nodes.values())
-      .sort((a, b) => b.metadata.createdAt.getTime() - a.metadata.createdAt.getTime())
+      .sort((a, b) => {
+        const timeDiff = b.metadata.createdAt.getTime() - a.metadata.createdAt.getTime();
+        if (timeDiff !== 0) return timeDiff;
+        // タイムスタンプが同じ場合はIDの辞書順（UUIDなので作成順に近い）
+        return b.id.localeCompare(a.id);
+      })
       .slice(0, effectiveLimit);
 
     const result: RecentActivityResult = {
@@ -1182,7 +1192,7 @@ export class GraphService {
     }
 
     // 親子関係インデックスを更新
-    const parentChildTypes = ["decomposes", "hypothesizes", "tests", "produces", "learns"];
+    const parentChildTypes = ["decomposes", "hypothesizes", "tests", "produces", "learns", "solves"];
     if (parentChildTypes.includes(edge.type)) {
       this.parentIndex.set(edge.to, edge.from);
     }

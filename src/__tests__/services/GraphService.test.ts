@@ -178,14 +178,14 @@ describe("GraphService", () => {
       const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
       expect(response.similarProblems).toBeDefined();
-      expect(response.similarProblems.length).toBeGreaterThan(0);
+      expect(response.similarProblems?.length).toBeGreaterThan(0);
 
       // Should find the TypeError problems with high similarity
-      const typeErrors = response.similarProblems.filter((p) => p.content.includes("TypeError"));
-      expect(typeErrors.length).toBeGreaterThanOrEqual(2);
+      const typeErrors = response.similarProblems?.filter((p) => p.content.includes("TypeError"));
+      expect(typeErrors?.length).toBeGreaterThanOrEqual(2);
 
       // Should have high similarity scores for TypeErrors
-      expect(typeErrors[0].similarity).toBeGreaterThanOrEqual(0.6);
+      expect(typeErrors?.[0].similarity).toBeGreaterThanOrEqual(0.6);
     });
 
     it("should not return similar problems for non-problem nodes", async () => {
@@ -390,7 +390,7 @@ describe("GraphService", () => {
       expect(response.similarProblems).toBeDefined();
 
       // Should find similar TypeErrors
-      const allTypeErrors = response.similarProblems.every((p) => p.content.includes("TypeError"));
+      const allTypeErrors = response.similarProblems?.every((p) => p.content.includes("TypeError"));
       expect(allTypeErrors).toBe(true);
 
       // Performance should be reasonable even with many nodes
@@ -613,12 +613,22 @@ describe("GraphService", () => {
       const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
       expect(response.results).toBeDefined();
-      expect(response.results.nodes).toBeDefined();
-      expect(response.results.nodes.length).toBeGreaterThan(0);
-      expect(response.results.totalNodes).toBeGreaterThan(0);
+      const results = response.results as {
+        nodes: Array<{
+          nodeId: string;
+          type: NodeType;
+          content: string;
+          createdAt: string;
+          edges: Array<{ direction: string; targetNodeId: string }>;
+        }>;
+        totalNodes: number;
+      };
+      expect(results.nodes).toBeDefined();
+      expect(results.nodes.length).toBeGreaterThan(0);
+      expect(results.totalNodes).toBeGreaterThan(0);
 
       // Verify nodes are sorted by creation time (most recent first)
-      const firstNode = response.results.nodes[0];
+      const firstNode = results.nodes[0];
       expect(firstNode.nodeId).toBe(s.nodeId);
       expect(firstNode.content).toBe("Test solution");
       expect(firstNode.edges).toBeDefined();
@@ -646,11 +656,20 @@ describe("GraphService", () => {
 
       const response = JSON.parse(result.content[0].text) as ParsedResponseWithSimilarProblems;
       expect(response.success).toBe(true);
-      expect(response.results.nodes.length).toBe(10);
-      expect(response.results.totalNodes).toBeGreaterThanOrEqual(15);
+      const results = response.results as {
+        nodes: Array<{
+          nodeId: string;
+          type: NodeType;
+          content: string;
+          createdAt: string;
+        }>;
+        totalNodes: number;
+      };
+      expect(results.nodes.length).toBe(10);
+      expect(results.totalNodes).toBeGreaterThanOrEqual(15);
 
       // Verify most recent nodes are returned
-      expect(response.results.nodes[0].content).toContain("Problem 14");
+      expect(results.nodes[0].content).toContain("Problem 14");
     });
 
     it("should include parent information in recent activity", async () => {
@@ -1173,10 +1192,10 @@ describe("GraphService", () => {
         expect(pathNodeIds).toContain(solutionId);
 
         // The first node should be the problem
-        expect(debugPath[0].nodeId).toBe(problemId);
+        expect(debugPath?.[0].nodeId).toBe(problemId);
 
         // The last node should be the solution
-        expect(debugPath[debugPath.length - 1].nodeId).toBe(solutionId);
+        expect(debugPath?.[debugPath?.length - 1].nodeId).toBe(solutionId);
       }
     });
 

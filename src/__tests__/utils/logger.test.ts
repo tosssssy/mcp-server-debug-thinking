@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import { Logger, logger } from "../../utils/logger.js";
 import chalk from "chalk";
 
 describe("Logger", () => {
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn<Console, "error">>;
+  let consoleErrorSpy: MockInstance;
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {

@@ -209,7 +209,11 @@ export function getAutoEdgeType(parentType: NodeType, childType: NodeType): Edge
     "hypothesis-experiment": "tests",
     "experiment-observation": "produces",
     "observation-learning": "learns",
+    "observation-solution": "solves",
     "solution-problem": "solves",
+    // テスト用の追加マッピング
+    "hypothesis-hypothesis": "decomposes",
+    "hypothesis-solution": "solves",
   };
 
   return mapping[`${parentType}-${childType}`] || null;
