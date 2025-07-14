@@ -17,27 +17,36 @@ import { TOOL_NAME, SERVER_NAME, SERVER_VERSION } from "./constants.js";
 
 const DEBUG_THINKING_TOOL: Tool = {
   name: TOOL_NAME,
-  description: `Graph-based debugging tool using Problem-Solution Trees and Hypothesis-Experiment-Learning cycles.
+  description: `Graph-based debugging knowledge management system. Helps track debugging process systematically and retrieve past solutions.
 
-This tool models debugging as a knowledge graph with three simple actions:
+Use this tool when:
+- User reports an error or bug that needs systematic investigation
+- You need to document your debugging approach for complex issues
+- You want to check if similar problems were solved before
+- Building a knowledge base of debugging patterns
 
-1. CREATE - Create nodes (problem, hypothesis, experiment, observation, learning, solution)
-2. CONNECT - Create relationships between nodes
-3. QUERY - Search and analyze the debugging graph
+Actions:
+1. CREATE - Add nodes to the debugging graph
+   - nodeType: problem|hypothesis|experiment|observation|learning|solution
+   - content: Description of the node
+   - parentId: Optional parent node for automatic edge creation
+   - metadata: Optional tags, confidence scores, etc.
 
-Workflow example:
-- CREATE problem "App crashes on startup"
-- CREATE hypothesis "Memory leak in event handlers" (auto-connects to problem)
-- CREATE experiment "Add cleanup in useEffect" (auto-connects to hypothesis)
-- CREATE observation "Memory usage stable" (auto-connects to experiment)
-- CREATE learning "Always cleanup React effects"
-- CONNECT observation to learning with 'learns' relationship
+2. CONNECT - Link nodes with relationships
+   - from/to: Node IDs to connect
+   - type: decomposes|hypothesizes|tests|produces|learns|contradicts|supports|solves
+   - strength: 0-1 relationship strength
 
-Features:
-- Automatic relationship creation based on parent-child context
-- Pattern recognition across debugging sessions
-- Knowledge accumulation and reuse
-- Fast similarity search for problems and solutions
+3. QUERY - Search and analyze the graph
+   - queryType: similar-problems|recent-activity
+   - parameters: pattern (search text), limit, minSimilarity
+
+Example workflow:
+- CREATE problem "TypeError: Cannot read property 'x' of undefined"
+- CREATE hypothesis "Missing null check in async operation"
+- CREATE experiment "Add optional chaining operator"
+- CREATE observation "Error resolved"
+- QUERY similar-problems with pattern "TypeError undefined"
 
 Data persists in ~/.debug-thinking-mcp/`,
   inputSchema: {
