@@ -49,7 +49,7 @@
   },
   "homepage": "https://github.com/tosssssy/mcp-server-debug-thinking#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@modelcontextprotocol/sdk": "^1.15.1",
     "chalk": "^5.3.0",
     "uuid": "^9.0.1"
   },
